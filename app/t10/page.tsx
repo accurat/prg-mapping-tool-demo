@@ -33,8 +33,14 @@ const DATA_HEIGHT_M = 26000;
 /** Altezza uniforme quando diventano semplici segnaposto. */
 const MARKER_HEIGHT_M = 3000;
 
-/** Secondi che un carico impiega a percorrere il collegamento, dall'hub al negozio. */
-const PULSE_TRAVEL_S = 2.8;
+/**
+ * Secondi che un carico impiega a percorrere il collegamento.
+ *
+ * Piu' merce passa, piu' il flusso e' rapido: da oltre quattro secondi per un
+ * collegamento quasi fermo a poco piu' di uno e mezzo per il piu' trafficato.
+ */
+const pulseTravelS = (volume: number) => 4.4 - volume * 2.8;
+
 /** Carichi contemporanei su un collegamento: da uno a cinque, secondo il volume. */
 const pulseCount = (volume: number) => 1 + Math.round(volume * 4);
 
@@ -250,9 +256,10 @@ export default function T10Page() {
         for (const trip of trips) {
           if (trip.hub !== focusHub) continue;
           const n = pulseCount(trip.volume);
+          const travel = pulseTravelS(trip.volume);
           const last = trip.path.length - 1;
           for (let k = 0; k < n; k++) {
-            const phase = ((seconds / PULSE_TRAVEL_S + k / n) % 1 + 1) % 1;
+            const phase = ((seconds / travel + k / n) % 1 + 1) % 1;
             const at = phase * last;
             const i = Math.min(last - 1, Math.floor(at));
             const f = at - i;
@@ -377,10 +384,14 @@ export default function T10Page() {
           getRadius: 5,
           billboard: true,
           getPosition: (d) => d.position,
-          // Colore unico e caldo: il carico non deve dire quanto vale il
-          // negozio — quello lo dicono gia' la cella e il collegamento — deve
-          // solo farsi vedere mentre si muove.
-          getFillColor: () => [255, 240, 210, flow > 0 ? 255 : 0],
+          // Il carico ha il colore del proprio collegamento, schiarito quel
+          // tanto che basta a staccarsi dalla linea su cui corre: deve leggersi
+          // come merce che viaggia su quell'arco, non come un elemento a se'.
+          getFillColor: (d) => {
+            const c = valueColor(d.value);
+            const lift = (v: number) => v + (255 - v) * 0.35;
+            return [lift(c[0]), lift(c[1]), lift(c[2]), flow > 0 ? 255 : 0];
+          },
           updateTriggers: { getFillColor: flow > 0 },
         }),
       ];

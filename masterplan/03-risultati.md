@@ -657,10 +657,14 @@ passaggio non si vede.
 
 ### Il flusso di merce
 
-Nel momento finale — area sola, vista dall'alto — lungo i collegamenti corrono dei carichi. Quanti
-ne viaggiano insieme dipende dal volume scambiato fra hub e negozio: da uno a cinque. **La velocita'
-e' la stessa per tutti: cambia la frequenza, non la fretta.** Un collegamento trafficato mostra un
-flusso continuo, uno con poca merce un carico ogni tanto.
+Nel momento finale — area sola, vista dall'alto — lungo i collegamenti corrono dei carichi. Il
+volume scambiato fra hub e negozio governa **due cose insieme**: quanti carichi viaggiano
+contemporaneamente (da uno a cinque) e quanto rapidamente percorrono la tratta (da 4,3 a 1,6
+secondi). Ne risulta una frequenza di arrivo che va da un carico ogni quattro secondi a tre al
+secondo: un collegamento trafficato pulsa, uno quasi fermo manda un carico ogni tanto.
+
+Ogni carico ha **il colore del proprio collegamento**, schiarito quel tanto che basta a staccarsi
+dalla linea su cui corre: si legge come merce che viaggia su quell'arco, non come un elemento a se'.
 
 Le posizioni si campionano sulla stessa curva gia' calcolata per i collegamenti, quindi i carichi
 corrono esattamente sull'arco disegnato invece che su una traiettoria simile.
