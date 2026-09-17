@@ -56,6 +56,25 @@ const PHASE_LABEL: Record<Phase, string> = {
 };
 
 /**
+ * Profilo di altezza dell'arco: una campana simmetrica.
+ *
+ * Con un profilo sinusoidale la pendenza e' massima proprio ai due estremi:
+ * l'arco parte a candela, sale dritto e piega di colpo in cima. Il risultato
+ * sembra appuntito, soprattutto qui dove l'altezza e' quasi pari alla
+ * lunghezza del collegamento.
+ *
+ * Questa campana ha invece **pendenza nulla in tre punti** — partenza, vertice
+ * e arrivo — quindi si stacca dal suolo dolcemente, arrotonda in cima e
+ * riatterra allo stesso modo. La quota massima resta identica: cambia solo come
+ * ci si arriva.
+ */
+function bell(t: number): number {
+  const u = t * 2;
+  const v = u <= 1 ? u : 2 - u;
+  return v * v * (3 - 2 * v);
+}
+
+/**
  * Illuminazione della scena.
  *
  * Le ombre si possono tenere **solo finche' non ci sono archi**: con il
@@ -122,11 +141,26 @@ export default function T10Page() {
    * traccia invece lungo la sua traiettoria definitiva, che non cambia mai.
    */
   const trips = useMemo(() => {
-    const SAMPLES = 28;
+    const SAMPLES = 44;
     const SPAN = 100;
     return stores.map((store) => {
       const from = hubs[store.hub].position;
       const to = store.position;
+
+      // L'altezza dell'arco e' una **proporzione della sua lunghezza**, non un
+      // valore fisso.
+      //
+      // Con un'altezza uguale per tutti, un negozio a pochi chilometri dal
+      // proprio hub riceveva un arco alto quanto quelli lunghi: una guglia
+      // quasi verticale. Legandola alla distanza, tutti i collegamenti hanno la
+      // stessa proporzione e la stessa morbidezza, e i piu' lunghi mantengono
+      // la quota di prima.
+      const metersPerDegLat = 111_320;
+      const dx =
+        (to[0] - from[0]) * metersPerDegLat * Math.cos((from[1] * Math.PI) / 180);
+      const dy = (to[1] - from[1]) * metersPerDegLat;
+      const length = Math.hypot(dx, dy);
+      const apex = length * 0.45 * (0.65 + store.value * 0.35);
       const path: [number, number, number][] = [];
       const timestamps: number[] = [];
       // Partenze scaglionate per distanza: ogni stella si apre dal centro.
@@ -136,7 +170,7 @@ export default function T10Page() {
         path.push([
           from[0] + (to[0] - from[0]) * t,
           from[1] + (to[1] - from[1]) * t,
-          Math.sin(t * Math.PI) * 34000 * (0.5 + store.value * 0.5),
+          bell(t) * apex,
         ]);
         timestamps.push(offset + t * SPAN);
       }
