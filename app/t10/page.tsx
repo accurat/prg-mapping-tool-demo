@@ -214,11 +214,18 @@ export default function T10Page() {
         typeof window !== "undefined" &&
         new URLSearchParams(window.location.search).get("solo") === "archi";
 
-      const layers: Layer[] = [];
-
-      // Durante la discesa i negozi non ci sono ancora: altrimenti si vedrebbe
-      // una macchia colorata sul territorio prima che la scena cominci.
-      if (rise > 0) layers.push(
+      // I due strati esistono **sempre**, fin dal precaricamento, anche quando
+      // non si vedono: a `rise` zero le colonne sono trasparenti e alte zero, a
+      // `net` zero nessun percorso e' ancora stato tracciato.
+      //
+      // Serve perche' la prima volta che la scheda video disegna un tipo di
+      // elemento deve preparare i programmi di disegno e caricare i dati, e quel
+      // lavoro avviene dentro un solo fotogramma, che dura il doppio degli
+      // altri. Creandoli qui, quel fotogramma cade durante il precaricamento —
+      // quando sullo schermo non c'e' niente — invece che nell'istante in cui il
+      // rilievo emerge o la rete si accende, cioe' i due momenti in cui la sala
+      // guarda con piu' attenzione.
+      const layers: Layer[] = [
         new ColumnLayer<Store>({
           id: "negozi",
           data: stores,
@@ -253,35 +260,31 @@ export default function T10Page() {
           },
           ...under(labelId),
         }),
-      );
 
-      if (net > 0) {
-        layers.push(
-          new TripsLayer<{
-            path: [number, number, number][];
-            timestamps: number[];
-            value: number;
-            hub: number;
-          }>({
-            id: "rete",
-            data: trips,
-            getPath: (d) => d.path,
-            getTimestamps: (d) => d.timestamps,
-            getColor: (d) => {
-              const c = valueColor(d.value);
-              return [c[0], c[1], c[2], 255 * keep(d.hub)];
-            },
-            widthUnits: "pixels",
-            getWidth: 6,
-            // La scia non svanisce mai: il percorso, una volta tracciato,
-            // resta. Serve un disegno progressivo, non una cometa.
-            trailLength: tripsEnd * 2,
-            currentTime: net * tripsEnd,
-            updateTriggers: { getColor: focus },
-            ...under(labelId),
-          }),
-        );
-      }
+        new TripsLayer<{
+          path: [number, number, number][];
+          timestamps: number[];
+          value: number;
+          hub: number;
+        }>({
+          id: "rete",
+          data: trips,
+          getPath: (d) => d.path,
+          getTimestamps: (d) => d.timestamps,
+          getColor: (d) => {
+            const c = valueColor(d.value);
+            return [c[0], c[1], c[2], 255 * keep(d.hub)];
+          },
+          widthUnits: "pixels",
+          getWidth: 6,
+          // La scia non svanisce mai: il percorso, una volta tracciato, resta.
+          // Serve un disegno progressivo, non una cometa.
+          trailLength: tripsEnd * 2,
+          currentTime: net * tripsEnd,
+          updateTriggers: { getColor: focus },
+          ...under(labelId),
+        }),
+      ];
 
       overlay.setProps({
         layers: soloArchi ? layers.slice(1) : layers,

@@ -655,6 +655,28 @@ alla proiezione piana, poi il secondo tratto porta a destinazione ed e' li' che 
 l'inclinazione. A zoom 6 con inclinazione zero globo e piano coincidono gia' visivamente, e il
 passaggio non si vede.
 
+### Il costo nascosto del primo disegno
+
+Entrando in una fase nuova si perdeva **un fotogramma solo**: la mediana restava a 59,9 al secondo
+ma il minimo scendeva a 29,9, cioe' esattamente un fotogramma durato quanto due.
+
+Non e' carico della scena: e' il lavoro che la scheda video fa **la prima volta** che disegna un
+tipo di elemento — preparare i programmi di disegno e caricare i dati — e che avviene tutto dentro
+quel fotogramma. Capitava nei due momenti peggiori: quando il rilievo emerge e quando la rete si
+accende, cioe' quando la sala guarda con piu' attenzione.
+
+Risolto creando entrambi gli strati **fin dal precaricamento**, invisibili: a rilievo non emerso le
+colonne sono trasparenti e alte zero, a rete non accesa nessun percorso e' ancora tracciato. Il
+fotogramma lungo cade quindi mentre si precaricano le tessere, quando sullo schermo non c'e'
+ancora niente.
+
+Verificato: all'ingresso della fase della rete il minimo e' ora 57,8 al secondo invece di 29,9, e
+il peggior fotogramma dell'intera sessione si e' spostato all'avvio.
+
+E' un accorgimento che vale oltre questo test: **gli oggetti di deck.gl si creano una volta, prima
+che servano.** Vale per i layer come vale per l'illuminazione, dove ricrearli in corsa faceva
+smettere di disegnare del tutto.
+
 ### Cosa resta aperto
 
 - La palette e l'illuminazione sono ancora quelle di prova: la scena e' scura e il rilievo si legge
