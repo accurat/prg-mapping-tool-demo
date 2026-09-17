@@ -211,12 +211,19 @@ export default function T10Page() {
    * I negozi che restano quando la scena si stringe.
    *
    * Dall'alto, novanta segnaposto sono un tappeto: si vede che ce ne sono
-   * tanti, non quali contano. Ne restano i diciotto con il potenziale piu'
-   * alto, che e' anche il motivo per cui ci si sta stringendo su quell'area.
+   * tanti, non quali contano.
+   *
+   * Ne restano dodici, scelti secondo **due criteri diversi**: i sei con il
+   * potenziale inespresso piu' alto e i sei che movimentano piu' merce. Cosi'
+   * il fotogramma finale non mostra una classifica sola, ma mette a confronto
+   * due domande — dove c'e' da crescere e dove gia' si lavora — che nei dati
+   * veri non coincidono quasi mai.
    */
   const focusStores = useMemo(() => {
     const mine = stores.filter((s) => s.hub === focusHub);
-    return new Set([...mine].sort((a, b) => b.value - a.value).slice(0, 18));
+    const byPotential = [...mine].sort((a, b) => b.value - a.value).slice(0, 6);
+    const byVolume = [...mine].sort((a, b) => b.volume - a.volume).slice(0, 6);
+    return new Set([...byPotential, ...byVolume]);
   }, [stores, focusHub]);
 
   /** Istante oltre il quale ogni percorso e' completo. */
@@ -388,13 +395,13 @@ export default function T10Page() {
           id: "hub",
           data: hubs,
           diskResolution: 6,
-          // Stretto e alto, non largo e basso: al centro della stella
-          // convergono decine di archi, e un segnaposto raso terra ci sparisce
-          // sotto. Deve emergere dal ventaglio, non stargli in mezzo.
+          // Alto quanto i negozi: quando restano solo dodici collegamenti il
+          // centro non e' piu' affollato, e una torre svetterebbe senza motivo.
+          // A distinguerlo bastano il colore e il raggio maggiore.
           radius: 3400,
           extruded: true,
           getPosition: (d) => d.position,
-          getElevation: () => MARKER_HEIGHT_M * 5 * flat,
+          getElevation: () => MARKER_HEIGHT_M * flat,
           // Verde acqua: sta fuori dalla scala caldo-freddo che misura il
           // potenziale, quindi non si confonde con un negozio che vale molto o
           // poco. L'hub non e' un punto della scala, e' un'altra categoria.
