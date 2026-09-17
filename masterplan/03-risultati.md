@@ -419,6 +419,59 @@ di contesto e ai pannelli laterali descritti nel documento dei layout.
    se la sala vede qualcosa.
 4. **Confermare su uno schermo grande vero.** Tutto quanto sopra viene da immagini ridotte.
 
+## T5 — archi negozio / hub
+
+Interlacciato, sorgente CARTO, 5760x1080. Misure senza sincronismo, quindi i valori sono il costo
+reale di un fotogramma su un budget di 16,7 millisecondi.
+
+| Scenario | Mediana | p95 | Peggiore |
+| --- | --- | --- | --- |
+| 500 archi statici, rotazione | 2,8 ms | 5,1 ms | 8 ms |
+| 5.000 archi statici, rotazione | 2,9 ms | 5,0 ms | 9 ms |
+| 50.000 archi statici, rotazione | 5,8 ms | 11,7 ms | 16 ms |
+| 500 rotte, flusso animato | 3,6 ms | 5,4 ms | 8 ms |
+| 5.000 rotte, flusso animato | 4,0 ms | 7,1 ms | 9 ms |
+| **50.000 rotte, flusso animato** | **24,1 ms** | 32,4 ms | 60 ms |
+| **500 rotte, flusso, inquadratura ravvicinata** | **4,9 ms** | 8,1 ms | 9 ms |
+
+### Gli esiti
+
+**Il caso reale sta largo.** Cinquecento rotte in flusso animato, viste da vicino e inclinate —
+cioe' esattamente quello che il concept descrive — costano 4,9 millisecondi su 16,7. Tre volte il
+margine necessario.
+
+**Gli archi statici sono quasi gratuiti fino a cinquantamila.** Da 500 a 5.000 il costo non cambia
+(2,8 contro 2,9 ms); a 50.000 sale a 5,8, ancora dentro il budget.
+
+**Il flusso animato ha un tetto, e sta fra cinquemila e cinquantamila rotte.** Il motivo e' nella
+struttura: un arco e' due punti, un percorso animato e' ventiquattro. Cinquecento rotte diventano
+dodicimila punti e costano nulla; cinquantamila diventano **un milione e duecentomila punti** e
+costano 24 millisecondi, fuori budget.
+
+E' un limite che non ci riguarda — il dataset di rete ne ha cinquecento — ma definisce il confine:
+**fino a cinquemila rotte il flusso e' sostenibile, oltre va ripensato** riducendo i punti per
+percorso o animando solo le rotte della selezione corrente.
+
+### Una correzione alla regola di T9
+
+Il pannello segnala che una linea da 6 pixel occupa 1,8 minuti d'arco a dodici metri, cioe' "al
+limite". Eppure, nell'immagine ridotta di venti volte, **il flusso si legge benissimo**: le scie
+calde restano nette sul fondo scuro.
+
+La regola di T9 va quindi precisata: **la soglia di un minuto d'arco vale per distinguere due
+elementi vicini fra loro, non per accorgersi di un elemento isolato e luminoso su fondo scuro.**
+Una linea sottile perde lo spessore apparente ma non scompare, perche' e' lunga e ha molto
+contrasto.
+
+E' anche la spiegazione di perche' il rilievo fallisse la prova e il flusso la superi: le celle
+devono essere distinte **l'una dall'altra**, gli archi no.
+
+### Nota di resa
+
+Il flusso animato e' il fotogramma piu' efficace prodotto finora in tutta la serie di test. Vale la
+pena tenerne conto nella gerarchia del concept, dove la rete di rifornimento e' oggi uno strato di
+supporto fra i tanti.
+
 ## Note tecniche emerse durante la costruzione
 
 Trappole gia' incontrate, annotate perche' si ripresenterebbero a chiunque rifacesse questi test.

@@ -6,7 +6,7 @@ const TESTS = [
   { id: "t2", title: "Il costo della mappa base", desc: "Stili, terreno, edifici, misurati separatamente", ready: false },
   { id: "t3", title: "deck.gl sopra MapLibre", desc: "Sovrapposto contro interlacciato", ready: true },
   { id: "t4", title: "Colonne esagonali", desc: "Il rilievo: celle, aggregazione, transizioni, ombre", ready: true },
-  { id: "t5", title: "Archi negozio - hub", desc: "Quantita' e animazione", ready: false },
+  { id: "t5", title: "Archi negozio - hub", desc: "Quantita' e animazione", ready: true },
   { id: "t6", title: "Punti e selezione", desc: "27.000 punti, con e senza rilevamento del tocco", ready: false },
   { id: "t7", title: "Interazioni", desc: "Gesti, volo, trascinamento con selezione continua", ready: false },
   { id: "t8", title: "Tre schermi", desc: "Un canvas da 5760 contro tre da 1920", ready: false },

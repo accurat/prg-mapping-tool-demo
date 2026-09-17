@@ -11,9 +11,12 @@ import {
   HexagonLayer,
   LightingEffect,
   MapLibreOverlay,
+  TripsLayer,
+  ArcLayer,
 } from "deck.gl";
 import { makeHexGrid, type HexCell } from "@/lib/lab/hexGrid";
 import { makeStorePoints, type StorePoint } from "@/lib/lab/points";
+import { makeRoutes, toTripPaths, type Route, type TripPath } from "@/lib/lab/routes";
 import { prefetchDescent, settle, under } from "@/lib/lab/map";
 import { measure, wait, type Sample } from "@/lib/lab/measure";
 
@@ -394,6 +397,137 @@ export default function BenchPage() {
 
             await wait(500);
           }
+        }
+
+        overlay.setProps({ layers: [] });
+        await wait(300);
+        map.removeControl(overlay);
+      }
+
+
+      if (suite === "arcs") {
+        // ---- T5: archi e flusso ----
+        setStep("carico la mappa per gli archi");
+        const map = await mountMap("carto");
+        map.jumpTo({ center: TARGET, zoom: 5.4, pitch: 50, bearing: 0 });
+        await settle(map, 20000);
+        const labelId = map.getStyle().layers.find((l) => l.type === "symbol")?.id;
+
+        const overlay = new MapLibreOverlay({ interleaved: true, layers: [] });
+        map.addControl(overlay);
+
+        // --- archi statici ---
+        for (const count of [500, 5000, 50000]) {
+          const routes = makeRoutes({ center: TARGET, count });
+          overlay.setProps({
+            layers: [
+              new ArcLayer<Route>({
+                id: "archi",
+                data: routes,
+                getSourcePosition: (d) => d.source,
+                getTargetPosition: (d) => d.target,
+                getSourceColor: () => [70, 120, 200, 180],
+                getTargetColor: (d) => [255, 190 - d.weight * 90, 90, 220],
+                getWidth: 6,
+                widthUnits: "pixels",
+                getHeight: (d) => 0.4 + d.weight * 0.6,
+                ...under(labelId),
+              }),
+            ],
+          });
+          await wait(1200);
+
+          setStep(`T5 · ${count} archi statici · rotazione`);
+          const stop = spin(map, "bearing");
+          push({
+            test: "T5",
+            scenario: `${count.toLocaleString("it-IT")} archi statici · rotazione`,
+            ...WALL,
+            ...(await measure(4000, () => map.areTilesLoaded())),
+          });
+          stop();
+          map.setBearing(0);
+        }
+
+        // --- flusso animato ---
+        const CYCLE = 1000;
+        for (const count of [500, 5000, 50000]) {
+          const trips = toTripPaths(makeRoutes({ center: TARGET, count }), 24, CYCLE);
+          let time = 0;
+          let raf = 0;
+          const tick = () => {
+            time = (time + 4) % CYCLE;
+            overlay.setProps({
+              layers: [
+                new TripsLayer<TripPath>({
+                  id: "flusso",
+                  data: trips,
+                  getPath: (d) => d.path,
+                  getTimestamps: (d) => d.timestamps,
+                  getColor: (d) => [255, 190 - d.weight * 90, 90],
+                  widthUnits: "pixels",
+                  getWidth: 6,
+                  trailLength: CYCLE * 0.25,
+                  currentTime: time,
+                  ...under(labelId),
+                }),
+              ],
+            });
+            raf = requestAnimationFrame(tick);
+          };
+          raf = requestAnimationFrame(tick);
+          await wait(1500);
+
+          setStep(`T5 · ${count} rotte in flusso animato`);
+          push({
+            test: "T5",
+            scenario: `${count.toLocaleString("it-IT")} rotte · flusso animato`,
+            ...WALL,
+            ...(await measure(4000, () => map.areTilesLoaded())),
+            note: `${(count * 24).toLocaleString("it-IT")} punti di percorso`,
+          });
+          cancelAnimationFrame(raf);
+        }
+
+        // --- il caso reale: poche rotte, da vicino, inclinate ---
+        map.jumpTo({ center: TARGET, zoom: 8.4, pitch: 58, bearing: 0 });
+        await settle(map, 20000);
+        {
+          const trips = toTripPaths(makeRoutes({ center: TARGET, count: 500 }), 24, CYCLE);
+          let time = 0;
+          let raf = 0;
+          const tick = () => {
+            time = (time + 4) % CYCLE;
+            overlay.setProps({
+              layers: [
+                new TripsLayer<TripPath>({
+                  id: "flusso-vicino",
+                  data: trips,
+                  getPath: (d) => d.path,
+                  getTimestamps: (d) => d.timestamps,
+                  getColor: (d) => [255, 190 - d.weight * 90, 90],
+                  widthUnits: "pixels",
+                  getWidth: 6,
+                  trailLength: CYCLE * 0.25,
+                  currentTime: time,
+                  ...under(labelId),
+                }),
+              ],
+            });
+            raf = requestAnimationFrame(tick);
+          };
+          raf = requestAnimationFrame(tick);
+          await wait(1500);
+
+          setStep("T5 · 500 rotte in flusso, inquadratura ravvicinata");
+          push({
+            test: "T5",
+            scenario: "500 rotte · flusso animato · inquadratura ravvicinata",
+            ...WALL,
+            ...(await measure(4000, () => map.areTilesLoaded())),
+            note: "il caso reale del concept: poche rotte, da vicino, inclinate",
+          });
+          cancelAnimationFrame(raf);
         }
 
         overlay.setProps({ layers: [] });
