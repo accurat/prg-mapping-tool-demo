@@ -49,12 +49,22 @@ export function makeStorePoints({
     const inCluster = rnd() > 0.2;
     const hub = hubs[Math.floor(rnd() * hubs.length)];
 
-    const position: [number, number] = inCluster
-      ? [
-          hub.lng + (rnd() - 0.5) * hub.tightness,
-          hub.lat + (rnd() - 0.5) * hub.tightness * 0.6,
-        ]
-      : [lng + (rnd() - 0.5) * spreadDeg * 2, lat + (rnd() - 0.5) * spreadDeg];
+    let position: [number, number];
+    if (inCluster) {
+      // Distribuzione radiale attorno al centro, non uniforme dentro una
+      // scatola: un offset uniforme su ciascun asse produce agglomerati
+      // **rettangolari a bordi netti**, che sullo schermo sembrano un difetto
+      // di resa e non una citta'. La radice della casuale addensa verso il
+      // centro, come si addensano i negozi attorno a un centro abitato.
+      const angle = rnd() * Math.PI * 2;
+      const distance = Math.sqrt(rnd()) * hub.tightness;
+      position = [
+        hub.lng + Math.cos(angle) * distance,
+        hub.lat + Math.sin(angle) * distance * 0.6,
+      ];
+    } else {
+      position = [lng + (rnd() - 0.5) * spreadDeg * 2, lat + (rnd() - 0.5) * spreadDeg];
+    }
 
     const value = rnd();
     // L'anno prima: correlato ma non identico, come sarebbe nei dati veri.
