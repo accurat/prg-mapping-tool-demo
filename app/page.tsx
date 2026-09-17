@@ -8,7 +8,7 @@ const TESTS = [
   { id: "t4", title: "Colonne esagonali", desc: "Il rilievo: celle, aggregazione, transizioni, ombre", ready: true },
   { id: "t5", title: "Archi negozio - hub", desc: "Quantita' e animazione", ready: true },
   { id: "t6", title: "Punti e selezione", desc: "27.000 punti, con e senza rilevamento del tocco", ready: true },
-  { id: "t7", title: "Interazioni", desc: "Gesti, volo, trascinamento con selezione continua", ready: false },
+  { id: "t7", title: "Interazioni", desc: "Gesti, volo, trascinamento con selezione continua", ready: true },
   { id: "t8", title: "Tre schermi", desc: "Un canvas da 5760 contro tre da 1920", ready: false },
   { id: "t9", title: "Leggibilita'", desc: "Dimensioni minime a dodici metri", ready: true },
 ];

@@ -536,6 +536,53 @@ della soglia. Conferma per altra via una scelta gia' presente nel concept, cioe'
 punti vendita compaiano solo a scala ravvicinata**: da lontano, un negozio singolo non e' un
 oggetto che la sala possa vedere.
 
+## T7 — interazioni
+
+Scena realistica: tremila celle estruse sulla mappa, interlacciato, 5760x1080. La pennellata e'
+eseguita dalla pagina lungo un percorso fisso — un trascinamento fatto a mano non e' ripetibile e i
+due modi non sarebbero confrontabili.
+
+| Modo del pennello | Risoluzione della cella | Fotogrammi, mediana | Minimo osservato |
+| --- | --- | --- | --- |
+| **geometrico** (dalla coordinata) | **0,01 ms** | 3,3 ms | — |
+| **grafico** (interrogando la scena) | **3,76 ms** medi, fino a 7,7 | 2,9 ms | 35,2/s |
+
+Latenza **dal tocco al fotogramma disegnato: 15 ms**.
+
+### Gli esiti
+
+**I due criteri del piano sono rispettati, anche nel modo peggiore.** Il trascinamento resta sopra
+i trenta fotogrammi al secondo e la risposta al tocco e' di quindici millisecondi, contro i cento
+ammessi. Non c'e' niente da rinegoziare sui gesti.
+
+**La risoluzione geometrica costa quattrocento volte meno**, ed e' la conferma della contromisura
+uscita da T6. Ricavare la cella dalla coordinata sono due divisioni e due arrotondamenti:
+un centesimo di millisecondo. Interrogare la scena comporta disegnare un fotogramma di servizio e
+rileggerlo.
+
+**Ma il numero non e' l'argomento migliore.** Il punto vero e' un altro: **il costo geometrico non
+dipende da cosa c'e' in scena, quello grafico si'.** Qui, con tremila colonne, l'interrogazione
+costa 3,8 millisecondi; in T6, con centomila punti, ne costava dieci. La via geometrica costera'
+un centesimo di millisecondo in qualunque scena futura, con qualsiasi numero di strati accesi.
+
+E' il motivo per cui la sceglierei anche se oggi i numeri fossero equivalenti.
+
+### Il limite della soluzione geometrica
+
+La cella viene risolta come se la maglia fosse rettangolare invece che esagonale: vicino ai vertici
+degli esagoni il risultato puo' cadere sulla cella adiacente. Per un pennello che attraversa decine
+di celle e' irrilevante — la cella sbagliata di confine viene comunque toccata un istante dopo. Per
+un **tocco singolo di precisione** su una cella sola andrebbe raffinato, oppure si usa
+l'interrogazione grafica, che per un tocco isolato costa quanto vale.
+
+Ne esce una divisione dei compiti chiara, da portare nell'implementazione:
+
+| Gesto | Come si risolve |
+| --- | --- |
+| Tocco singolo su una cella | Interrogazione grafica: precisa, e dieci millisecondi una volta sola |
+| Trascinamento del pennello | Via geometrica: gratuita e indipendente dalla scena |
+| Tocco su un punto vendita a scala ravvicinata | Interrogazione grafica: sono poche decine di oggetti |
+
 ## Note tecniche emerse durante la costruzione
 
 Trappole gia' incontrate, annotate perche' si ripresenterebbero a chiunque rifacesse questi test.
