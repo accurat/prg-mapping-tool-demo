@@ -4,7 +4,7 @@ const TESTS = [
   { id: "t0", title: "Impianto", desc: "Canvas a 5760x1080, contatore fotogrammi, costo della sola superficie", ready: true },
   { id: "t1", title: "La discesa su una citta'", desc: "MapLibre, dal globo alla scala stradale", ready: true },
   { id: "t2", title: "Il costo della mappa base", desc: "Stili, terreno, edifici, misurati separatamente", ready: false },
-  { id: "t3", title: "deck.gl sopra MapLibre", desc: "Sovrapposto contro interlacciato", ready: false },
+  { id: "t3", title: "deck.gl sopra MapLibre", desc: "Sovrapposto contro interlacciato", ready: true },
   { id: "t4", title: "Colonne esagonali", desc: "Il rilievo: celle, aggregazione, transizioni, ombre", ready: false },
   { id: "t5", title: "Archi negozio - hub", desc: "Quantita' e animazione", ready: false },
   { id: "t6", title: "Punti e selezione", desc: "27.000 punti, con e senza rilevamento del tocco", ready: false },

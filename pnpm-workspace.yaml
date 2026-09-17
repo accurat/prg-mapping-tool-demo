@@ -1,3 +1,6 @@
 allowBuilds:
+  # Script di statistiche d'uso di una dipendenza transitiva di deck.gl:
+  # non serve a noi e contatta un servizio esterno all'installazione.
+  '@vaadin/vaadin-usage-statistics': false
   sharp: false
   unrs-resolver: false

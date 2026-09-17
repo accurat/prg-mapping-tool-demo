@@ -4,6 +4,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { GlSurface } from "@/components/lab/GlSurface";
 import { MapSurface, type MapHandle } from "@/components/lab/MapSurface";
 import { Stage } from "@/components/lab/Stage";
+import { ColumnLayer, MapLibreOverlay } from "deck.gl";
+import { makeHexGrid, type HexCell } from "@/lib/lab/hexGrid";
 import { prefetchDescent, settle } from "@/lib/lab/map";
 import { measure, wait, type Sample } from "@/lib/lab/measure";
 
@@ -74,8 +76,10 @@ export default function BenchPage() {
 
   useEffect(() => {
     if (started.current) return;
-    if (!new URLSearchParams(window.location.search).has("run")) return;
+    const query = new URLSearchParams(window.location.search);
+    if (!query.has("run")) return;
     started.current = true;
+    const suite = query.get("suite") ?? "base";
 
     (async () => {
       const collected: Row[] = [];
@@ -84,6 +88,7 @@ export default function BenchPage() {
         setRows([...collected]);
       };
 
+      if (suite === "base") {
       // ---- T0: costo della sola superficie ----
       for (const passes of [1, 4, 8]) {
         setStep(`T0 · muro · ${passes} passaggi`);
@@ -175,6 +180,68 @@ export default function BenchPage() {
         }
       }
 
+      }
+
+      if (suite === "deck") {
+        // ---- T3: deck.gl sopra la mappa, e T4a: costo delle colonne ----
+        setStep("carico la mappa per deck.gl");
+        const map = await mountMap("carto");
+        map.jumpTo({ center: TARGET, zoom: 10.2, pitch: 55, bearing: 0 });
+        await settle(map, 20000);
+
+        const labelId = map.getStyle().layers.find((l) => l.type === "symbol")?.id;
+
+        for (const interleaved of [false, true]) {
+          const modeLabel = interleaved ? "interlacciato" : "sovrapposto";
+          const overlay = new MapLibreOverlay({ interleaved, layers: [] });
+          map.addControl(overlay);
+
+          for (const count of [500, 2000, 10000]) {
+            const cells = makeHexGrid({ center: TARGET, count, cellRadiusMeters: 900 });
+            overlay.setProps({
+              layers: [
+                new ColumnLayer<HexCell>({
+                  id: "colonne",
+                  data: cells,
+                  diskResolution: 6,
+                  radius: 780,
+                  extruded: true,
+                  pickable: false,
+                  getPosition: (d) => d.position,
+                  getElevation: (d) => d.value * 6000,
+                  getFillColor: (d) => [40 + d.value * 120, 90 + d.value * 110, 150, 210],
+                  ...(interleaved && labelId ? { beforeId: labelId } : {}),
+                }),
+              ],
+            });
+            await wait(1200);
+
+            setStep(`T3 · ${modeLabel} · ${count} colonne · fermo`);
+            push({
+              test: "T3",
+              scenario: `${modeLabel} · ${count} colonne · camera ferma`,
+              ...WALL,
+              ...(await measure(4000, () => map.areTilesLoaded())),
+            });
+
+            setStep(`T3 · ${modeLabel} · ${count} colonne · rotazione`);
+            const stop = spin(map, "bearing");
+            push({
+              test: "T3",
+              scenario: `${modeLabel} · ${count} colonne · rotazione continua`,
+              ...WALL,
+              ...(await measure(4000, () => map.areTilesLoaded())),
+            });
+            stop();
+            map.setBearing(0);
+          }
+
+          overlay.setProps({ layers: [] });
+          await wait(300);
+          map.removeControl(overlay);
+        }
+      }
+
       setScene({ kind: "idle" });
       setStep("salvataggio");
 
@@ -182,6 +249,7 @@ export default function BenchPage() {
       const payload = {
         takenAt: new Date().toISOString(),
         mode: params.get("mode") ?? "sincronismo verticale attivo",
+        suite: params.get("suite") ?? "base",
         userAgent: navigator.userAgent,
         devicePixelRatio: window.devicePixelRatio,
         hardwareConcurrency: navigator.hardwareConcurrency,

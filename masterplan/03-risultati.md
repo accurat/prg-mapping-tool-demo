@@ -210,6 +210,58 @@ Ne discendono due requisiti per il prodotto, non per il test:
 - Non e' stato provato il precaricamento di destinazioni diverse dalla stessa: cambiando storia
   cambia il corridoio, e la cache va dimensionata per piu' di un corridoio o ricostruita.
 
+## T3 — deck.gl sopra MapLibre: sovrapposto contro interlacciato
+
+Colonne esagonali su una griglia generata, a 5760x1080, inclinazione 55, sorgente CARTO.
+Tre quantita' di colonne per ogni modalita', camera ferma e camera in rotazione continua.
+
+| Scenario | p95 con sincronismo | Costo reale, mediana | Costo reale, p95 |
+| --- | --- | --- | --- |
+| sovrapposto, 500 colonne, rotazione | 33,4 ms | 19,3 ms | 35,4 ms |
+| sovrapposto, 2.000 colonne, rotazione | 33,4 ms | 19,8 ms | 38,1 ms |
+| sovrapposto, 10.000 colonne, rotazione | 33,4 ms | 20,1 ms | 39,3 ms |
+| **interlacciato, 500 colonne, rotazione** | 16,8 ms | **4,2 ms** | 8,2 ms |
+| **interlacciato, 2.000 colonne, rotazione** | 16,7 ms | **4,3 ms** | 8,2 ms |
+| **interlacciato, 10.000 colonne, rotazione** | 16,8 ms | **4,1 ms** | 8,1 ms |
+
+*Le righe a camera ferma non compaiono perche' non misurano niente: se la camera non si muove la
+mappa non ridisegna, e il valore letto e' la cadenza a riposo, non un costo.*
+
+### L'esito ribalta l'ipotesi di partenza
+
+Il masterplan dava per scontato che l'interlacciato costasse di piu', e che il sovrapposto fosse la
+scelta giusta visto che non ci servono edifici tridimensionali. **E' vero il contrario.**
+
+**Con il sincronismo attivo, il sovrapposto scende a 30 fotogrammi al secondo appena la camera si
+muove.** Il p95 di 33,4 millisecondi e' esattamente il doppio di un intervallo di aggiornamento: e'
+la firma di due tele che vengono composte fuori sincrono, non di un carico eccessivo. Lo si vede
+dal fatto che **il numero di colonne non cambia nulla**: 500 si comportano come 10.000.
+
+**Senza sincronismo si misura il costo vero, ed e' cinque volte tanto:** 19-20 millisecondi contro
+4. Due contesti grafici e due tele da comporre a ogni fotogramma costano piu' di tutto il resto
+messo insieme.
+
+**In piu' l'interlacciato fa anche quello che serve.** Inserendo le colonne sotto il primo livello
+di etichette, i nomi delle citta' restano leggibili sopra il rilievo. In modalita' sovrapposta le
+colonne coprono tutto, etichette comprese: sul muro significherebbe perdere i nomi dei luoghi
+esattamente dove si sta guardando.
+
+**Decisione: interlacciato.** Vince su entrambi i fronti, e non c'e' controindicazione.
+
+### Un risultato che anticipa T4
+
+Il numero di colonne e' **ininfluente fino a diecimila**: 4,1 millisecondi con diecimila contro 4,2
+con cinquecento. La domanda di T4a — quante celle reggiamo — ha gia' una risposta parziale: molte
+piu' di quelle che ci servono. A T4 restano il tempo di aggregazione, le transizioni di altezza e
+il costo delle ombre.
+
+### Cosa resta da verificare su T3
+
+- Il comportamento con **piu' layer contemporaneamente** (colonne piu' archi piu' punti): qui ce
+  n'era uno solo.
+- L'interlacciato con il **rilevamento del tocco attivo**, che aggiunge un passaggio di rendering.
+- Il comportamento durante la **discesa** invece che in rotazione, con le colonne gia' presenti.
+
 ## Note tecniche emerse durante la costruzione
 
 Trappole gia' incontrate, annotate perche' si ripresenterebbero a chiunque rifacesse questi test.
