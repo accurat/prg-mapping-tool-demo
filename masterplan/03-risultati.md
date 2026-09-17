@@ -655,6 +655,21 @@ alla proiezione piana, poi il secondo tratto porta a destinazione ed e' li' che 
 l'inclinazione. A zoom 6 con inclinazione zero globo e piano coincidono gia' visivamente, e il
 passaggio non si vede.
 
+### Il flusso di merce
+
+Nel momento finale — area sola, vista dall'alto — lungo i collegamenti corrono dei carichi. Quanti
+ne viaggiano insieme dipende dal volume scambiato fra hub e negozio: da uno a cinque. **La velocita'
+e' la stessa per tutti: cambia la frequenza, non la fretta.** Un collegamento trafficato mostra un
+flusso continuo, uno con poca merce un carico ogni tanto.
+
+Le posizioni si campionano sulla stessa curva gia' calcolata per i collegamenti, quindi i carichi
+corrono esattamente sull'arco disegnato invece che su una traiettoria simile.
+
+**Costo: nessuno.** Con la scena a regime e i carichi in movimento la mediana resta 59,9 fotogrammi
+al secondo e il minimo 59,5 — il piu' alto misurato in tutta la sequenza. Ricalcolare qualche
+centinaio di posizioni per fotogramma non si vede: a incidere sarebbe stato ricreare un layer, non
+aggiornarne i dati.
+
 ### Il costo nascosto del primo disegno
 
 Entrando in una fase nuova si perdeva **un fotogramma solo**: la mediana restava a 59,9 al secondo

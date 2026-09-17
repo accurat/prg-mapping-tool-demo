@@ -11,6 +11,14 @@ export type Store = {
   value: number;
   /** Distanza dal proprio hub, normalizzata: serve a scaglionare l'animazione. */
   reach: number;
+  /**
+   * Quantita' di merce scambiata con il proprio hub, 0..1.
+   *
+   * Distinta dal potenziale: un negozio puo' ricevere molta merce e avere poco
+   * margine, o viceversa. Nel prodotto sarebbero casse o pezzi dal dataset di
+   * rete, qui e' correlata alla dimensione ma non identica.
+   */
+  volume: number;
 };
 
 /**
@@ -80,6 +88,13 @@ export function makeStoreNetwork({
           ),
         ),
         reach: distance / spread,
+        volume: Math.min(
+          1,
+          Math.max(
+            0.05,
+            0.45 + 0.4 * Math.cos(angle * 2 + hub.index) + 0.25 * (1 - distance / spread),
+          ),
+        ),
       });
     }
   }

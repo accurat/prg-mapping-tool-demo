@@ -6,6 +6,7 @@ import {
   DirectionalLight,
   LightingEffect,
   MapLibreOverlay,
+  ScatterplotLayer,
   TripsLayer,
 } from "deck.gl";
 import type { Layer } from "deck.gl";
@@ -32,6 +33,11 @@ const DATA_HEIGHT_M = 26000;
 /** Altezza uniforme quando diventano semplici segnaposto. */
 const MARKER_HEIGHT_M = 3000;
 
+/** Secondi che un carico impiega a percorrere il collegamento, dall'hub al negozio. */
+const PULSE_TRAVEL_S = 2.8;
+/** Carichi contemporanei su un collegamento: da uno a cinque, secondo il volume. */
+const pulseCount = (volume: number) => 1 + Math.round(volume * 4);
+
 type Phase =
   | "attesa"
   | "preparazione"
@@ -41,6 +47,7 @@ type Phase =
   | "appiattimento"
   | "archi"
   | "fuoco"
+  | "flusso"
   | "finito";
 
 const PHASE_LABEL: Record<Phase, string> = {
@@ -52,6 +59,7 @@ const PHASE_LABEL: Record<Phase, string> = {
   appiattimento: "da dato a luogo",
   archi: "la rete si accende",
   fuoco: "si stringe su un'area",
+  flusso: "la merce scorre",
   finito: "fine",
 };
 
@@ -125,6 +133,9 @@ export default function T10Page() {
 
   const overlayRef = useRef<MapLibreOverlay | null>(null);
   const started = useRef(false);
+  const flowRaf = useRef(0);
+
+  useEffect(() => () => cancelAnimationFrame(flowRaf.current), []);
 
   const { stats } = useFrameMeter();
   const trust = useRenderTrust(stats.medianMs);
@@ -173,7 +184,7 @@ export default function T10Page() {
         ]);
         timestamps.push(offset + t * SPAN);
       }
-      return { path, timestamps, value: store.value, hub: store.hub };
+      return { path, timestamps, value: store.value, hub: store.hub, volume: store.volume };
     });
   }, [stores, hubs]);
 
@@ -224,12 +235,41 @@ export default function T10Page() {
    * `flat`  0..1  quanto sono state appiattite a segnaposto
    * `net`   0..1  quanto si e' estesa la rete
    * `focus` 0..1  quanto e' svanito tutto cio' che non e' l'area scelta
+   * `flow`  secondi trascorsi dall'inizio del flusso, 0 se non e' partito
    */
   const draw = useCallback(
-    (rise: number, flat: number, net: number, focus = 0) => {
+    (rise: number, flat: number, net: number, focus = 0, flow = 0) => {
       // Quanto resta visibile di un dato hub: l'area scelta resta intera,
       // le altre si dissolvono.
       const keep = (hub: number) => (hub === focusHub ? 1 : 1 - focus);
+
+      /** Posizione dei carichi lungo i collegamenti, a un dato istante. */
+      const flowPulses = (seconds: number) => {
+        if (seconds <= 0) return [] as { position: [number, number, number]; value: number }[];
+        const out: { position: [number, number, number]; value: number }[] = [];
+        for (const trip of trips) {
+          if (trip.hub !== focusHub) continue;
+          const n = pulseCount(trip.volume);
+          const last = trip.path.length - 1;
+          for (let k = 0; k < n; k++) {
+            const phase = ((seconds / PULSE_TRAVEL_S + k / n) % 1 + 1) % 1;
+            const at = phase * last;
+            const i = Math.min(last - 1, Math.floor(at));
+            const f = at - i;
+            const a = trip.path[i];
+            const b = trip.path[i + 1];
+            out.push({
+              position: [
+                a[0] + (b[0] - a[0]) * f,
+                a[1] + (b[1] - a[1]) * f,
+                a[2] + (b[2] - a[2]) * f,
+              ],
+              value: trip.value,
+            });
+          }
+        }
+        return out;
+      };
 
       /**
        * Quanto e' emerso un singolo negozio, 0..1.
@@ -316,6 +356,32 @@ export default function T10Page() {
           currentTime: net * tripsEnd,
           updateTriggers: { getColor: focus },
           ...under(labelId),
+        }),
+
+        /**
+         * I carichi in viaggio lungo i collegamenti.
+         *
+         * Quanti ne corrono insieme dipende dal volume scambiato: un
+         * collegamento molto trafficato mostra un flusso continuo, uno con poca
+         * merce un carico ogni tanto. La velocita' e' la stessa per tutti —
+         * cambia la frequenza, non la fretta.
+         *
+         * Le posizioni si campionano sulla stessa curva gia' calcolata per i
+         * collegamenti, cosi' i carichi corrono esattamente sull'arco disegnato
+         * invece che su una traiettoria simile.
+         */
+        new ScatterplotLayer<{ position: [number, number, number]; value: number }>({
+          id: "carichi",
+          data: flowPulses(flow),
+          radiusUnits: "pixels",
+          getRadius: 5,
+          billboard: true,
+          getPosition: (d) => d.position,
+          // Colore unico e caldo: il carico non deve dire quanto vale il
+          // negozio — quello lo dicono gia' la cella e il collegamento — deve
+          // solo farsi vedere mentre si muove.
+          getFillColor: () => [255, 240, 210, flow > 0 ? 255 : 0],
+          updateTriggers: { getFillColor: flow > 0 },
         }),
       ];
 
@@ -415,7 +481,15 @@ export default function T10Page() {
     });
     await animate(3000, (t) => draw(1, 1, 1, t));
 
-    setPhase("finito");
+    // Il flusso non ha una fine: da qui in poi la scena resta viva, con la
+    // merce che continua a viaggiare finche' qualcuno non interviene.
+    setPhase("flusso");
+    const flowStart = performance.now();
+    const loop = () => {
+      draw(1, 1, 1, 1, (performance.now() - flowStart) / 1000);
+      flowRaf.current = requestAnimationFrame(loop);
+    };
+    flowRaf.current = requestAnimationFrame(loop);
   }, [map, draw, animate, hubs, focusHub]);
 
   useEffect(() => {
