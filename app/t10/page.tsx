@@ -190,7 +190,7 @@ export default function T10Page() {
         ]);
         timestamps.push(offset + t * SPAN);
       }
-      return { path, timestamps, value: store.value, hub: store.hub, volume: store.volume };
+      return { path, timestamps, store };
     });
   }, [stores, hubs]);
 
@@ -206,6 +206,18 @@ export default function T10Page() {
     });
     return totals.indexOf(Math.max(...totals));
   }, [hubs, stores]);
+
+  /**
+   * I negozi che restano quando la scena si stringe.
+   *
+   * Dall'alto, novanta segnaposto sono un tappeto: si vede che ce ne sono
+   * tanti, non quali contano. Ne restano i diciotto con il potenziale piu'
+   * alto, che e' anche il motivo per cui ci si sta stringendo su quell'area.
+   */
+  const focusStores = useMemo(() => {
+    const mine = stores.filter((s) => s.hub === focusHub);
+    return new Set([...mine].sort((a, b) => b.value - a.value).slice(0, 18));
+  }, [stores, focusHub]);
 
   /** Istante oltre il quale ogni percorso e' completo. */
   const tripsEnd = useMemo(
@@ -245,18 +257,19 @@ export default function T10Page() {
    */
   const draw = useCallback(
     (rise: number, flat: number, net: number, focus = 0, flow = 0) => {
-      // Quanto resta visibile di un dato hub: l'area scelta resta intera,
-      // le altre si dissolvono.
-      const keep = (hub: number) => (hub === focusHub ? 1 : 1 - focus);
+      // Cosa resta quando la scena si stringe: dell'area scelta restano solo i
+      // negozi che contano, tutto il resto si dissolve.
+      const keepStore = (d: Store) => (focusStores.has(d) ? 1 : 1 - focus);
+      const keepHub = (index: number) => (index === focusHub ? 1 : 1 - focus);
 
       /** Posizione dei carichi lungo i collegamenti, a un dato istante. */
       const flowPulses = (seconds: number) => {
         if (seconds <= 0) return [] as { position: [number, number, number]; value: number }[];
         const out: { position: [number, number, number]; value: number }[] = [];
         for (const trip of trips) {
-          if (trip.hub !== focusHub) continue;
-          const n = pulseCount(trip.volume);
-          const travel = pulseTravelS(trip.volume);
+          if (!focusStores.has(trip.store)) continue;
+          const n = pulseCount(trip.store.volume);
+          const travel = pulseTravelS(trip.store.volume);
           const last = trip.path.length - 1;
           for (let k = 0; k < n; k++) {
             const phase = ((seconds / travel + k / n) % 1 + 1) % 1;
@@ -271,7 +284,7 @@ export default function T10Page() {
                 a[1] + (b[1] - a[1]) * f,
                 a[2] + (b[2] - a[2]) * f,
               ],
-              value: trip.value,
+              value: trip.store.value,
             });
           }
         }
@@ -319,7 +332,7 @@ export default function T10Page() {
             const height = dataHeight * (1 - flat) + MARKER_HEIGHT_M * flat * local;
             // Svanendo rientrano anche nel terreno, invece di restare in piedi
             // e sbiadire: un segnaposto trasparente ma alto resta un ingombro.
-            return height * keep(d.hub);
+            return height * keepStore(d);
           },
           // Il colore resta quello del valore anche da appiattite: cambia
           // l'altezza, non il significato. La cella continua a dire quanto
@@ -332,7 +345,7 @@ export default function T10Page() {
           getFillColor: (d) => {
             const c = valueColor(d.value);
             const l = localRise(d);
-            return [c[0], c[1], c[2], c[3] * (l * l * (3 - 2 * l)) * keep(d.hub)];
+            return [c[0], c[1], c[2], c[3] * (l * l * (3 - 2 * l)) * keepStore(d)];
           },
           updateTriggers: {
             getElevation: [rise, flat, focus],
@@ -341,19 +354,14 @@ export default function T10Page() {
           ...under(labelId),
         }),
 
-        new TripsLayer<{
-          path: [number, number, number][];
-          timestamps: number[];
-          value: number;
-          hub: number;
-        }>({
+        new TripsLayer<{ path: [number, number, number][]; timestamps: number[]; store: Store }>({
           id: "rete",
           data: trips,
           getPath: (d) => d.path,
           getTimestamps: (d) => d.timestamps,
           getColor: (d) => {
-            const c = valueColor(d.value);
-            return [c[0], c[1], c[2], 255 * keep(d.hub)];
+            const c = valueColor(d.store.value);
+            return [c[0], c[1], c[2], 255 * keepStore(d.store)];
           },
           widthUnits: "pixels",
           getWidth: 6,
@@ -387,7 +395,10 @@ export default function T10Page() {
           extruded: true,
           getPosition: (d) => d.position,
           getElevation: () => MARKER_HEIGHT_M * 5 * flat,
-          getFillColor: (d) => [255, 236, 205, 255 * flat * keep(d.index)],
+          // Verde acqua: sta fuori dalla scala caldo-freddo che misura il
+          // potenziale, quindi non si confonde con un negozio che vale molto o
+          // poco. L'hub non e' un punto della scala, e' un'altra categoria.
+          getFillColor: (d) => [80, 235, 200, 255 * flat * keepHub(d.index)],
           updateTriggers: {
             getElevation: flat,
             getFillColor: [flat, focus],
@@ -431,7 +442,7 @@ export default function T10Page() {
         effects: [LIGHT],
       });
     },
-    [stores, hubs, trips, tripsEnd, focusHub, labelId],
+    [stores, hubs, trips, tripsEnd, focusHub, focusStores, labelId],
   );
 
   /** Anima un valore da 0 a 1 nel tempo dato, con partenza e arrivo morbidi. */
