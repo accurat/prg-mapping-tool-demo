@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { GlSurface } from "@/components/lab/GlSurface";
 import { MapSurface, type MapHandle } from "@/components/lab/MapSurface";
 import { Stage } from "@/components/lab/Stage";
+import { prefetchDescent, settle } from "@/lib/lab/map";
 import { measure, wait, type Sample } from "@/lib/lab/measure";
 
 const WALL = { width: 5760, height: 1080 };
@@ -27,7 +28,6 @@ const STARTS = {
   continental: { label: "continentale", zoom: 3.2 },
   state: { label: "statale", zoom: 6 },
 } as const;
-type StartKey = keyof typeof STARTS;
 
 type Row = Sample & {
   test: string;
@@ -133,12 +133,28 @@ export default function BenchPage() {
         });
         zooming();
 
-        for (const startKey of Object.keys(STARTS) as StartKey[]) {
-          const start = STARTS[startKey];
-          setStep(`T1 · ${label} · ${start.label}`);
+        // Solo la partenza dal globo: e' quella che il concept richiede, ed e'
+        // quella che si e' rivelata peggiore. Con e senza precaricamento.
+        for (const withPrefetch of [false, true]) {
+          const start = STARTS.globe;
+          const tag = withPrefetch ? "con precaricamento" : "senza precaricamento";
+          setStep(`T1 · ${label} · ${tag}`);
 
           map.setProjection({ type: "globe" });
           map.jumpTo({ center: TARGET, zoom: start.zoom, pitch: 0, bearing: 0 });
+          await settle(map, 6000);
+
+          let prefetchNote = "";
+          if (withPrefetch) {
+            const report = await prefetchDescent(map, {
+              center: TARGET,
+              fromZoom: start.zoom,
+              toZoom: 15.5,
+              toPitch: 55,
+            });
+            prefetchNote = `precaricamento ${(report.durationMs / 1000).toFixed(1)}s in ${report.steps} passi, ${report.timedOut} scaduti; `;
+          }
+
           const cleanStart = await settle(map, 6000);
           await wait(200);
 
@@ -151,10 +167,10 @@ export default function BenchPage() {
 
           push({
             test: "T1",
-            scenario: `${label} · discesa ${start.label} · 6s · globo`,
+            scenario: `${label} · discesa dal globo · ${tag}`,
             ...WALL,
             ...sample,
-            note: `assestamento ${(settleMs / 1000).toFixed(2)}s${settled ? "" : " (scaduto)"}, partenza ${cleanStart ? "pulita" : "con tessere in arrivo"}`,
+            note: `${prefetchNote}assestamento ${(settleMs / 1000).toFixed(2)}s${settled ? "" : " (scaduto)"}, partenza ${cleanStart ? "pulita" : "con tessere in arrivo"}`,
           });
         }
       }
@@ -260,22 +276,6 @@ export default function BenchPage() {
       </div>
     </main>
   );
-}
-
-/** Attende l'assestamento della mappa, con un limite. Vero se e' arrivato. */
-function settle(map: MapHandle, timeoutMs: number): Promise<boolean> {
-  if (map.areTilesLoaded()) return Promise.resolve(true);
-  return new Promise((resolve) => {
-    let done = false;
-    const finish = (ok: boolean) => {
-      if (done) return;
-      done = true;
-      window.clearTimeout(timer);
-      resolve(ok);
-    };
-    const timer = window.setTimeout(() => finish(false), timeoutMs);
-    map.once("idle", () => finish(true));
-  });
 }
 
 /**

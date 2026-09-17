@@ -151,6 +151,65 @@ OpenFreeMap aveva mostrato ritardi molto piu' alti (fino al 100% della discesa, 
 assestamento), quindi **i dati di rete sono rumorosi e vanno rifatti**, possibilmente con una
 sorgente servita da noi come terzo termine di confronto.
 
+## Contromisura: il precaricamento della discesa
+
+Delle quattro contromisure ipotizzate, tre sono state escluse per scelta di progetto: la partenza
+resta dal globo, l'inclinazione e la durata restano quelle attuali. Resta il precaricamento, ed e'
+sufficiente.
+
+### Come funziona
+
+Prima del volo la camera percorre a salti lo stesso corridoio della discesa — otto passi da zoom
+0,4 a zoom 15,5 — e a ogni passo si attende che le tessere siano arrivate. Poi torna alla partenza
+e il volo vero trova tutto gia' in cache.
+
+Il corridoio non viene calcolato da noi: e' la mappa stessa, spostando la camera, a decidere quali
+tessere servono per quell'inquadratura con la sua proiezione e la sua inclinazione. Qualsiasi
+calcolo nostro degli indirizzi sarebbe una riapprossimazione destinata a divergere.
+
+Due dettagli che fanno la differenza fra funzionare e non funzionare:
+
+- **La cache deve poter trattenere l'intero corridoio.** Il valore predefinito della libreria
+  tiene pochi livelli di zoom: le tessere dei primi passi verrebbero sfrattate prima che il volo le
+  raggiunga, e il precaricamento non servirebbe a nulla. Alzato a ventiquattro livelli.
+- **Vanno attesi due fotogrammi dopo ogni salto prima di interrogare lo stato.** Subito dopo un
+  salto di camera la mappa risponde ancora sulla situazione precedente. Nella prima versione il
+  precaricamento dichiarava di aver finito in 0,0 secondi senza aver atteso niente; migliorava
+  comunque le cose, ma per caso.
+
+### Risultato
+
+| Sorgente | Tessere in ritardo, senza | Tessere in ritardo, con | Peggior fotogramma, senza | con |
+| --- | --- | --- | --- | --- |
+| CARTO dark matter | 42% della discesa | **8%** | 34 ms | 33 ms |
+| OpenFreeMap dark | 43% della discesa | **13%** | 18 ms | 18 ms |
+
+La conferma che conta e' pero' visiva. Senza precaricamento, a zoom 13,8, il muro mostrava una
+chiazza di citta' al centro e nero su tutto il resto. Con il precaricamento la copertura e'
+**completa da bordo a bordo a ogni altezza**: a zoom 9,3 si legge da Topeka a Columbia, a zoom 14,4
+tutta la citta' con etichette, fiume e svincoli. Il problema e' chiuso.
+
+### Cosa costa
+
+**Da due a sei secondi**, a seconda che la cache sia fredda o gia' calda, e della rete. Nessuno
+degli otto passi e' scaduto.
+
+Ne discendono due requisiti per il prodotto, non per il test:
+
+1. **Il precaricamento va nascosto dietro il momento del titolo.** Il concept prevede gia'
+   un'apertura con titolo e data: e' li' che va eseguito. La sessione non deve mai mostrare la
+   camera che salta lungo il corridoio.
+2. **Va avviato appena si conosce la destinazione**, cioe' appena e' nota la prima storia — quindi
+   alla fine del caricamento del dataset, non al momento in cui qualcuno preme avvia.
+
+### Cosa resta da verificare
+
+- Il tempo di precaricamento dipende dalla rete: sei secondi qui, ignoti nella sala del cliente.
+  Con una sorgente servita in locale sarebbe quasi istantaneo, ed e' un argomento in piu' a favore
+  di quella scelta.
+- Non e' stato provato il precaricamento di destinazioni diverse dalla stessa: cambiando storia
+  cambia il corridoio, e la cache va dimensionata per piu' di un corridoio o ricostruita.
+
 ## Note tecniche emerse durante la costruzione
 
 Trappole gia' incontrate, annotate perche' si ripresenterebbero a chiunque rifacesse questi test.

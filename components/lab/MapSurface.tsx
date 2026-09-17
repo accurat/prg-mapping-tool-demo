@@ -22,12 +22,21 @@ export function MapSurface({
   height,
   styleUrl,
   projection,
+  maxTileCacheZoomLevels = 24,
   onReady,
 }: {
   width: number;
   height: number;
   styleUrl: string;
   projection: "globe" | "mercator";
+  /**
+   * Per quanti livelli di zoom la cache trattiene le tessere. Il valore
+   * predefinito della libreria basta per navigare, non per una discesa che
+   * attraversa quindici livelli: le tessere dei primi livelli verrebbero
+   * sfrattate prima che il volo le raggiunga, rendendo inutile qualsiasi
+   * precaricamento.
+   */
+  maxTileCacheZoomLevels?: number;
   onReady?: (map: MapHandle) => void;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -47,6 +56,7 @@ export function MapSurface({
       // Il valore predefinito e' 4096 e 5760 lo supera: MapLibre ridurrebbe da
       // solo la risoluzione, e misureremmo un muro piu' piccolo di quello vero.
       maxCanvasSize: [8192, 8192],
+      maxTileCacheZoomLevels,
       attributionControl: false,
       canvasContextAttributes: {
         antialias: false,
@@ -66,7 +76,7 @@ export function MapSurface({
     };
     // La mappa viene ricreata solo al cambio di stile o dimensione: la
     // proiezione si aggiorna nell'effetto sotto, senza ricostruire tutto.
-  }, [styleUrl, width, height]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [styleUrl, width, height, maxTileCacheZoomLevels]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const map = mapRef.current;

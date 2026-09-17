@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Hud, HudPanel, Row, fpsTone } from "@/components/lab/Hud";
 import { MapSurface, type MapHandle } from "@/components/lab/MapSurface";
 import { Stage } from "@/components/lab/Stage";
+import { prefetchDescent, settle, type PrefetchReport } from "@/lib/lab/map";
 import { useFrameMeter } from "@/lib/lab/useFrameMeter";
 import { useRenderTrust } from "@/lib/lab/useRenderTrust";
 
@@ -30,28 +31,6 @@ type StartKey = keyof typeof STARTS;
 const DURATIONS = [3000, 6000, 12000];
 const ARRIVAL_ZOOM = 15.5;
 
-/**
- * Attende che la mappa sia assestata, ma non oltre un limite.
- *
- * L'attesa senza limite e' una trappola: se le tessere non arrivano — rete
- * lenta, scheda in secondo piano, sorgente irraggiungibile — l'evento di
- * assestamento non si verifica mai e la discesa non parte. In sala
- * significherebbe una sessione che si apre su uno schermo fermo.
- */
-function whenSettled(map: MapHandle, timeoutMs: number): Promise<"settled" | "timeout"> {
-  if (map.areTilesLoaded()) return Promise.resolve("settled");
-  return new Promise((resolve) => {
-    let done = false;
-    const finish = (how: "settled" | "timeout") => {
-      if (done) return;
-      done = true;
-      window.clearTimeout(timer);
-      resolve(how);
-    };
-    const timer = window.setTimeout(() => finish("timeout"), timeoutMs);
-    map.once("idle", () => finish("settled"));
-  });
-}
 
 export default function T1Page() {
   const [sourceKey, setSourceKey] = useState<SourceKey>("carto");
@@ -65,6 +44,9 @@ export default function T1Page() {
   const [settleMs, setSettleMs] = useState<number | null>(null);
   const [bufferSize, setBufferSize] = useState<string>("...");
   const [preflight, setPreflight] = useState<"settled" | "timeout" | null>(null);
+  const [prefetchOn, setPrefetchOn] = useState(true);
+  const [prefetch, setPrefetch] = useState<PrefetchReport | null>(null);
+  const [prefetching, setPrefetching] = useState(false);
 
   const mapRef = useRef<MapHandle | null>(null);
   const { stats, reset, recording, startRecording, stopRecording } = useFrameMeter();
@@ -85,10 +67,24 @@ export default function T1Page() {
     const start = STARTS[startKey];
     map.jumpTo({ center: TARGET, zoom: start.zoom, pitch: 0, bearing: 0 });
     setSettleMs(null);
+    setPrefetch(null);
+
+    if (prefetchOn) {
+      setPrefetching(true);
+      setPrefetch(
+        await prefetchDescent(map, {
+          center: TARGET,
+          fromZoom: start.zoom,
+          toZoom: ARRIVAL_ZOOM,
+          toPitch: 55,
+        }),
+      );
+      setPrefetching(false);
+    }
 
     // Si attende che la partenza sia assestata, altrimenti la discesa
     // erediterebbe le tessere ancora in arrivo dal salto iniziale.
-    const how = await whenSettled(map, 3000);
+    const how = (await settle(map, 3000)) ? "settled" : "timeout";
     setPreflight(how);
 
     setFlying(true);
@@ -109,10 +105,10 @@ export default function T1Page() {
       stopRecording();
       setFlying(false);
       const landed = performance.now();
-      await whenSettled(map, 15000);
+      await settle(map, 15000);
       setSettleMs(performance.now() - landed);
     });
-  }, [duration, flying, projection, sourceKey, startKey, startRecording, stopRecording]);
+  }, [duration, flying, prefetchOn, projection, sourceKey, startKey, startRecording, stopRecording]);
 
   // Avvio automatico con ?auto=1: serve a poter catturare fotogrammi durante la
   // discesa dall'esterno, senza dipendere dal momento in cui si preme un tasto.
@@ -141,6 +137,7 @@ export default function T1Page() {
       if (e.key === "d" || e.key === "D")
         setDuration((d) => DURATIONS[(DURATIONS.indexOf(d) + 1) % DURATIONS.length]);
       if (e.key === "r" || e.key === "R") reset();
+      if (e.key === "f" || e.key === "F") setPrefetchOn((v) => !v);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -177,8 +174,8 @@ export default function T1Page() {
             <Row label="zoom" value={zoom.toFixed(2)} />
             <Row
               label="stato"
-              value={flying ? "discesa in corso" : "fermo"}
-              tone={flying ? "warn" : "normal"}
+              value={prefetching ? "precaricamento" : flying ? "discesa in corso" : "fermo"}
+              tone={prefetching || flying ? "warn" : "normal"}
             />
             <Row
               label="misura attendibile"
@@ -237,6 +234,17 @@ export default function T1Page() {
             <Row label="partenza" value={STARTS[startKey].label} />
             <Row label="durata" value={`${duration / 1000} s`} />
             <Row
+              label="precaricamento"
+              value={
+                prefetchOn
+                  ? prefetch
+                    ? `attivo, ${(prefetch.durationMs / 1000).toFixed(1)}s, ${prefetch.timedOut} passi scaduti`
+                    : "attivo"
+                  : "spento"
+              }
+              tone={prefetchOn ? "good" : "warn"}
+            />
+            <Row
               label="buffer reale"
               value={bufferOk ? `${bufferSize} ok` : bufferSize}
               tone={bufferOk ? "good" : "bad"}
@@ -272,6 +280,9 @@ export default function T1Page() {
               </span>
               <span>
                 <b className="text-white">D</b> durata
+              </span>
+              <span>
+                <b className="text-white">F</b> precaricamento
               </span>
               <span>
                 <b className="text-white">R</b> azzera
