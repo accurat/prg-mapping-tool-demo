@@ -197,6 +197,16 @@ export default function T10Page() {
       // Quanto resta visibile di un dato hub: l'area scelta resta intera,
       // le altre si dissolvono.
       const keep = (hub: number) => (hub === focusHub ? 1 : 1 - focus);
+
+      /**
+       * Quanto e' emerso un singolo negozio, 0..1.
+       *
+       * Scaglionata per distanza dal proprio hub: quelli vicini salgono per
+       * primi, cosi' ogni stella si apre dal centro verso fuori invece che
+       * tutta insieme.
+       */
+      const localRise = (d: Store) =>
+        Math.max(0, Math.min(1, (rise - d.reach * 0.45) / 0.55));
       const overlay = overlayRef.current;
       if (!overlay) return;
 
@@ -217,9 +227,7 @@ export default function T10Page() {
           extruded: true,
           getPosition: (d) => d.position,
           getElevation: (d) => {
-            // Comparsa scaglionata: i negozi vicini al proprio hub salgono
-            // per primi, cosi' ogni stella si apre dal centro verso fuori.
-            const local = Math.max(0, Math.min(1, (rise - d.reach * 0.45) / 0.55));
+            const local = localRise(d);
             const dataHeight = d.value * DATA_HEIGHT_M * local;
             const height = dataHeight * (1 - flat) + MARKER_HEIGHT_M * flat * local;
             // Svanendo rientrano anche nel terreno, invece di restare in piedi
@@ -229,13 +237,19 @@ export default function T10Page() {
           // Il colore resta quello del valore anche da appiattite: cambia
           // l'altezza, non il significato. La cella continua a dire quanto
           // vale, e a dodici metri e' la tinta a trasmetterlo (vedi T9).
+          //
+          // L'opacita' segue la stessa comparsa scaglionata dell'altezza:
+          // senza, all'inizio della fase tutti gli esagoni comparirebbero
+          // insieme a colore pieno e altezza zero — una macchia che si
+          // accende di scatto — e solo dopo si alzerebbero.
           getFillColor: (d) => {
             const c = valueColor(d.value);
-            return [c[0], c[1], c[2], c[3] * keep(d.hub)];
+            const l = localRise(d);
+            return [c[0], c[1], c[2], c[3] * (l * l * (3 - 2 * l)) * keep(d.hub)];
           },
           updateTriggers: {
             getElevation: [rise, flat, focus],
-            getFillColor: focus,
+            getFillColor: [rise, focus],
           },
           ...under(labelId),
         }),
