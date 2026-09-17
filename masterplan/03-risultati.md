@@ -472,6 +472,70 @@ Il flusso animato e' il fotogramma piu' efficace prodotto finora in tutta la ser
 pena tenerne conto nella gerarchia del concept, dove la rete di rifornimento e' oggi uno strato di
 supporto fra i tanti.
 
+## T6 — punti e costo della selezione
+
+Interlacciato, sorgente CARTO, 5760x1080, misure senza sincronismo.
+
+| Scenario | Mediana | p95 | Peggiore |
+| --- | --- | --- | --- |
+| 10.000 punti, non toccabili | 4,0 ms | 7,4 ms | 16 ms |
+| 10.000 punti, toccabili | 3,8 ms | 7,1 ms | 10 ms |
+| **10.000 punti, rilevamento a ogni fotogramma** | **12,8 ms** | 15,7 ms | 18 ms |
+| 27.000 punti, non toccabili | 3,7 ms | 7,1 ms | 11 ms |
+| 27.000 punti, toccabili | 3,7 ms | 6,9 ms | 11 ms |
+| **27.000 punti, rilevamento a ogni fotogramma** | **13,8 ms** | 16,6 ms | 33 ms |
+| 100.000 punti, non toccabili | 4,1 ms | 7,6 ms | 11 ms |
+| 100.000 punti, toccabili | 4,1 ms | 7,7 ms | 11 ms |
+| **100.000 punti, rilevamento a ogni fotogramma** | **14,9 ms** | 34,0 ms | 36 ms |
+
+Costo della singola interrogazione: **8,9 ms** con 10.000 punti, **9,7 ms** con 27.000, **10,6 ms**
+con 100.000.
+
+### Gli esiti
+
+**Disegnare i punti e' gratuito, e la quantita' non conta.** Diecimila, ventisettemila e centomila
+costano tutti fra 3,7 e 4,1 millisecondi. Anche centomila punti, che sono quattro volte la
+produzione dichiarata, non spostano nulla.
+
+**Rendere i punti toccabili non costa niente.** Marcare il layer come interrogabile e' identico a
+non farlo: 3,7 contro 3,7. Il costo non sta nella proprieta', sta nell'atto di interrogare.
+
+**Ogni interrogazione costa circa dieci millisecondi, quasi indipendentemente dai dati.** Da 8,9 a
+10,6 millisecondi passando da diecimila a centomila punti: la quantita' incide pochissimo. Il
+tempo non se ne va nel cercare fra i punti, se ne va nel **disegnare un fotogramma di servizio e
+rileggerlo dalla scheda video**, che e' un'operazione sincrona e blocca il resto.
+
+### La conseguenza per il concept
+
+Dieci millisecondi per un tocco singolo sono impercettibili: il gesto "tocco una cella" e' fuori
+discussione.
+
+Il problema e' il gesto che il concept chiama **selezione a pennello**: trascinare il dito
+estendendo la selezione. Interrogando a ogni fotogramma si arriva a 13-15 millisecondi su un budget
+di 16,7, e con centomila punti il p95 va a 34. **Funziona senza margine, e con margine zero in sala
+si scatta.**
+
+Ma non serve farlo cosi'. Il concept stesso dice che si trascina **sulle celle**, e che ogni cella
+conosce gia' i propri negozi: quale cella stia sotto il dito si ricava **dalla coordinata
+geografica con un calcolo**, senza chiedere niente alla scheda video. Il rilevamento grafico serve
+per i singoli punti vendita a scala ravvicinata, dove sono poche decine e il gesto e' un tocco
+isolato.
+
+Quindi, come indicazione per l'implementazione:
+
+- **tocco singolo**: interrogazione grafica, 10 ms, nessun problema;
+- **trascinamento sulle celle**: nessuna interrogazione grafica, si risolve la cella per via
+  geometrica;
+- **se proprio serve interrogare durante un trascinamento**, va ridotta la frequenza — una volta
+  ogni tre o quattro fotogrammi porta il costo medio sotto i tre millisecondi. Non verificato.
+
+### Una nota di leggibilita'
+
+Un punto con raggio 5 pixel occupa, a dodici metri, poco piu' di **tre minuti d'arco**: al limite
+della soglia. Conferma per altra via una scelta gia' presente nel concept, cioe' che **i singoli
+punti vendita compaiano solo a scala ravvicinata**: da lontano, un negozio singolo non e' un
+oggetto che la sala possa vedere.
+
 ## Note tecniche emerse durante la costruzione
 
 Trappole gia' incontrate, annotate perche' si ripresenterebbero a chiunque rifacesse questi test.

@@ -13,6 +13,7 @@ import {
   MapLibreOverlay,
   TripsLayer,
   ArcLayer,
+  ScatterplotLayer,
 } from "deck.gl";
 import { makeHexGrid, type HexCell } from "@/lib/lab/hexGrid";
 import { makeStorePoints, type StorePoint } from "@/lib/lab/points";
@@ -527,6 +528,89 @@ export default function BenchPage() {
             ...(await measure(4000, () => map.areTilesLoaded())),
             note: "il caso reale del concept: poche rotte, da vicino, inclinate",
           });
+          cancelAnimationFrame(raf);
+        }
+
+        overlay.setProps({ layers: [] });
+        await wait(300);
+        map.removeControl(overlay);
+      }
+
+
+      if (suite === "points") {
+        // ---- T6: punti e costo del rilevamento del tocco ----
+        setStep("carico la mappa per i punti");
+        const map = await mountMap("carto");
+        map.jumpTo({ center: TARGET, zoom: 6.6, pitch: 45, bearing: 0 });
+        await settle(map, 20000);
+        const labelId = map.getStyle().layers.find((l) => l.type === "symbol")?.id;
+
+        const overlay = new MapLibreOverlay({ interleaved: true, layers: [] });
+        map.addControl(overlay);
+
+        for (const count of [10000, 27000, 100000]) {
+          const points = makeStorePoints({ center: TARGET, count, spreadDeg: 4 });
+
+          for (const pickable of [false, true]) {
+            overlay.setProps({
+              layers: [
+                new ScatterplotLayer<StorePoint>({
+                  id: "negozi",
+                  data: points,
+                  pickable,
+                  radiusUnits: "pixels",
+                  getRadius: 5,
+                  getPosition: (d) => d.position,
+                  getFillColor: (d) => [60 + d.value * 195, 140 + d.value * 80, 230 - d.value * 140, 220],
+                  ...under(labelId),
+                }),
+              ],
+            });
+            await wait(1200);
+
+            const tag = pickable ? "toccabili" : "non toccabili";
+            setStep(`T6 · ${count} punti · ${tag}`);
+            const stop = spin(map, "bearing");
+            push({
+              test: "T6",
+              scenario: `${count.toLocaleString("it-IT")} punti · ${tag} · rotazione`,
+              ...WALL,
+              ...(await measure(4000, () => map.areTilesLoaded())),
+            });
+            stop();
+            map.setBearing(0);
+          }
+
+          // Il caso peggiore: rilevamento a ogni fotogramma mentre la camera si
+          // muove, cioe' il trascinamento di selezione descritto nel concept.
+          let raf = 0;
+          let picks = 0;
+          let pickTotal = 0;
+          const start = performance.now();
+          const tick = (now: number) => {
+            const t = (now - start) / 1000;
+            const x = WALL.width / 2 + Math.cos(t * 0.8) * (WALL.width * 0.3);
+            const y = WALL.height / 2 + Math.sin(t * 1.1) * (WALL.height * 0.25);
+            const t0 = performance.now();
+            overlay.pickObject({ x, y, radius: 4 });
+            pickTotal += performance.now() - t0;
+            picks += 1;
+            raf = requestAnimationFrame(tick);
+          };
+          raf = requestAnimationFrame(tick);
+          await wait(800);
+
+          setStep(`T6 · ${count} punti · rilevamento a ogni fotogramma`);
+          const stop2 = spin(map, "bearing");
+          push({
+            test: "T6",
+            scenario: `${count.toLocaleString("it-IT")} punti · rilevamento a ogni fotogramma · rotazione`,
+            ...WALL,
+            ...(await measure(4000, () => map.areTilesLoaded())),
+            note: picks ? `rilevamento ${(pickTotal / picks).toFixed(2)} ms per chiamata` : "",
+          });
+          stop2();
+          map.setBearing(0);
           cancelAnimationFrame(raf);
         }
 
