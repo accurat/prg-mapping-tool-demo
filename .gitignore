@@ -43,5 +43,5 @@ next-env.d.ts
 # Copiati da node_modules da scripts/sync-maplibre-worker.mjs
 /public/maplibre
 
-# Risultati grezzi del banco di prova (rigenerabili)
-/masterplan/results/*.jsonl
+# Risultati grezzi del banco di prova e fotogrammi di diagnosi (rigenerabili)
+/masterplan/results/

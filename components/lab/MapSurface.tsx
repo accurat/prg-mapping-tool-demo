@@ -23,6 +23,7 @@ export function MapSurface({
   styleUrl,
   projection,
   maxTileCacheZoomLevels = 24,
+  preserveDrawingBuffer = false,
   onReady,
 }: {
   width: number;
@@ -37,6 +38,11 @@ export function MapSurface({
    * precaricamento.
    */
   maxTileCacheZoomLevels?: number;
+  /**
+   * Necessario per rileggere il contenuto del canvas a valle del disegno.
+   * Costa, quindi si attiva solo nelle pagine di diagnosi.
+   */
+  preserveDrawingBuffer?: boolean;
   onReady?: (map: MapHandle) => void;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -61,6 +67,7 @@ export function MapSurface({
       canvasContextAttributes: {
         antialias: false,
         powerPreference: "high-performance",
+        preserveDrawingBuffer,
       },
     });
     mapRef.current = map;
@@ -76,7 +83,7 @@ export function MapSurface({
     };
     // La mappa viene ricreata solo al cambio di stile o dimensione: la
     // proiezione si aggiorna nell'effetto sotto, senza ricostruire tutto.
-  }, [styleUrl, width, height, maxTileCacheZoomLevels]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [styleUrl, width, height, maxTileCacheZoomLevels, preserveDrawingBuffer]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const map = mapRef.current;
