@@ -269,22 +269,50 @@ export default function T10Page() {
       const keepStore = (d: Store) => (focusStores.has(d) ? 1 : 1 - focus);
       const keepHub = (index: number) => (index === focusHub ? 1 : 1 - focus);
 
-      /** Posizione dei carichi lungo i collegamenti, a un dato istante. */
+      /**
+       * Posizione e visibilita' dei carichi lungo i collegamenti.
+       *
+       * I carichi non compaiono gia' distribuiti lungo il percorso: **partono
+       * tutti dall'hub**. Il primo parte subito, gli altri a intervalli
+       * regolari, e dopo un giro completo il collegamento e' a regime con la
+       * spaziatura definitiva. Distribuirli dall'istante zero avrebbe fatto
+       * apparire merce gia' a meta' strada, come se il viaggio fosse cominciato
+       * prima della scena.
+       *
+       * Ogni carico sfuma anche in entrata e in uscita, cosi' non compare di
+       * scatto sull'hub ne' sparisce di scatto sul negozio: parte, viaggia,
+       * arriva.
+       */
       const flowPulses = (seconds: number) => {
-        if (seconds <= 0) return [] as { position: [number, number, number]; value: number }[];
-        const out: { position: [number, number, number]; value: number }[] = [];
+        const out: { position: [number, number, number]; value: number; alpha: number }[] = [];
+        if (seconds <= 0) return out;
+
+        // Dissolvenza d'ingresso complessiva, all'inizio della fase.
+        const start = Math.min(1, seconds / 0.7);
+
         for (const trip of trips) {
           if (!focusStores.has(trip.store)) continue;
           const n = pulseCount(trip.store.volume);
           const travel = pulseTravelS(trip.store.volume);
           const last = trip.path.length - 1;
+
           for (let k = 0; k < n; k++) {
-            const phase = ((seconds / travel + k / n) % 1 + 1) % 1;
+            // Partenze scaglionate: il carico k si mette in viaggio dopo k
+            // intervalli, non e' gia' per strada quando la scena comincia.
+            const elapsed = seconds - (k * travel) / n;
+            if (elapsed < 0) continue;
+
+            const phase = (elapsed / travel) % 1;
             const at = phase * last;
             const i = Math.min(last - 1, Math.floor(at));
             const f = at - i;
             const a = trip.path[i];
             const b = trip.path[i + 1];
+
+            const edge = (x: number) => x * x * (3 - 2 * x);
+            const appear = edge(Math.min(1, phase / 0.08));
+            const arrive = edge(Math.min(1, (1 - phase) / 0.08));
+
             out.push({
               position: [
                 a[0] + (b[0] - a[0]) * f,
@@ -292,6 +320,7 @@ export default function T10Page() {
                 a[2] + (b[2] - a[2]) * f,
               ],
               value: trip.store.value,
+              alpha: start * appear * arrive,
             });
           }
         }
@@ -425,7 +454,11 @@ export default function T10Page() {
          * collegamenti, cosi' i carichi corrono esattamente sull'arco disegnato
          * invece che su una traiettoria simile.
          */
-        new ScatterplotLayer<{ position: [number, number, number]; value: number }>({
+        new ScatterplotLayer<{
+          position: [number, number, number];
+          value: number;
+          alpha: number;
+        }>({
           id: "carichi",
           data: flowPulses(flow),
           radiusUnits: "pixels",
@@ -438,7 +471,7 @@ export default function T10Page() {
           getFillColor: (d) => {
             const c = valueColor(d.value);
             const lift = (v: number) => v + (255 - v) * 0.35;
-            return [lift(c[0]), lift(c[1]), lift(c[2]), flow > 0 ? 255 : 0];
+            return [lift(c[0]), lift(c[1]), lift(c[2]), 255 * d.alpha];
           },
           updateTriggers: { getFillColor: flow > 0 },
         }),
