@@ -15,7 +15,7 @@ import { Hud, HudPanel, Row, fpsTone } from "@/components/lab/Hud";
 import { MapSurface, type MapHandle } from "@/components/lab/MapSurface";
 import { Stage } from "@/components/lab/Stage";
 import { prefetchDescent, settle, under } from "@/lib/lab/map";
-import { makeStoreNetwork, type Store } from "@/lib/lab/network";
+import { makeStoreNetwork, type Hub, type Store } from "@/lib/lab/network";
 import { useFrameMeter } from "@/lib/lab/useFrameMeter";
 import { useRenderTrust } from "@/lib/lab/useRenderTrust";
 
@@ -366,6 +366,36 @@ export default function T10Page() {
         }),
 
         /**
+         * Gli hub.
+         *
+         * Senza, al centro di ogni stella c'e' solo il punto dove le linee
+         * convergono: la merce sembra nascere dal nulla, e non si capisce che i
+         * collegamenti hanno un'origine comune. Sono piu' larghi e piu' chiari
+         * dei negozi perche' sono un'altra cosa, non un negozio piu' grande.
+         *
+         * Compaiono insieme ai segnaposto, cioe' quando la scena smette di
+         * parlare di potenziale e comincia a parlare di luoghi.
+         */
+        new ColumnLayer<Hub>({
+          id: "hub",
+          data: hubs,
+          diskResolution: 6,
+          // Stretto e alto, non largo e basso: al centro della stella
+          // convergono decine di archi, e un segnaposto raso terra ci sparisce
+          // sotto. Deve emergere dal ventaglio, non stargli in mezzo.
+          radius: 3400,
+          extruded: true,
+          getPosition: (d) => d.position,
+          getElevation: () => MARKER_HEIGHT_M * 5 * flat,
+          getFillColor: (d) => [255, 236, 205, 255 * flat * keep(d.index)],
+          updateTriggers: {
+            getElevation: flat,
+            getFillColor: [flat, focus],
+          },
+          ...under(labelId),
+        }),
+
+        /**
          * I carichi in viaggio lungo i collegamenti.
          *
          * Quanti ne corrono insieme dipende dal volume scambiato: un
@@ -401,7 +431,7 @@ export default function T10Page() {
         effects: [LIGHT],
       });
     },
-    [stores, trips, tripsEnd, focusHub, labelId],
+    [stores, hubs, trips, tripsEnd, focusHub, labelId],
   );
 
   /** Anima un valore da 0 a 1 nel tempo dato, con partenza e arrivo morbidi. */
