@@ -43,5 +43,8 @@ next-env.d.ts
 # Copiati da node_modules da scripts/sync-maplibre-worker.mjs
 /public/maplibre
 
-# Risultati grezzi del banco di prova e fotogrammi di diagnosi (rigenerabili)
-/masterplan/results/
+# Fotogrammi di diagnosi (centinaia di MB) e file di lavoro del banco di prova.
+# Le serie salvate restano invece tracciate: sono l'evidenza dietro ai numeri
+# di masterplan/03-risultati.md, e pesano poche decine di kilobyte.
+/masterplan/results/frames/
+/masterplan/results/runs.jsonl
