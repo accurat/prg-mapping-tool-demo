@@ -583,6 +583,53 @@ Ne esce una divisione dei compiti chiara, da portare nell'implementazione:
 | Trascinamento del pennello | Via geometrica: gratuita e indipendente dalla scena |
 | Tocco su un punto vendita a scala ravvicinata | Interrogazione grafica: sono poche decine di oggetti |
 
+## T10 — la sequenza completa
+
+Tutti i pezzi in fila: discesa, comparsa del rilievo, appiattimento a segnaposto, rete a stella.
+450 negozi, 5 hub, interlacciato, 5760x1080.
+
+**Prestazioni: 59,9 fotogrammi al secondo di mediana per tutta la sequenza**, minimo 56,5. Il
+precaricamento del corridoio impiega da 4,4 a 8,1 secondi a cache fredda.
+
+### Due incompatibilita' scoperte solo mettendo insieme i pezzi
+
+Nessuna delle due si vedeva nei test singoli, perche' ogni test provava una cosa sola.
+
+**1. Gli archi non esistono sotto la proiezione a globo.** Finche' la mappa dichiara proiezione a
+globo, l'integrazione usa una vista sferica, e sotto quella vista l'`ArcLayer` **non viene
+disegnato affatto**. Nessun errore, nessun avviso: semplicemente non c'e'. Le colonne invece
+reggono.
+
+E' il rischio che T1 indicava come principale per il globo — "quali dei nostri layer sopravvivono
+alla proiezione" — e si e' verificato. La contromisura G1 gia' prevista funziona: si torna alla
+proiezione piana appena atterrati, prima che la rete debba comparire.
+
+**2. Le ombre e gli archi non convivono.** Con il passaggio delle ombre attivo, l'`ArcLayer` sparisce
+anche in proiezione piana. Spegnendo le ombre ricompare.
+
+Anche qui nessun errore. Ed e' il motivo per cui il difetto era invisibile prima: T4 provava le
+ombre senza archi, T5 gli archi senza ombre.
+
+**La via d'uscita e' gratuita**, perche' i due momenti non si sovrappongono: quando la rete si
+accende i segnaposto sono gia' appiattiti, e un'ombra su una piastrella non aggiunge niente. Nella
+sequenza le ombre si spengono entrando nella fase della rete.
+
+### Cosa se ne ricava per il concept
+
+- **La sequenza del concept e' realizzabile come descritta**, a sessanta fotogrammi al secondo, con
+  tutti gli elementi insieme.
+- **L'apertura dal globo e la rete di rifornimento non possono coesistere nello stesso momento.**
+  Non e' un limite grave — nel concept il globo sta solo in apertura e la rete arriva molto dopo —
+  ma va scritto, perche' e' il genere di vincolo che si scopre a tre settimane dalla consegna.
+- **Vale la regola generale:** i test isolati non trovano le incompatibilita' fra elementi. Ogni
+  combinazione nuova di strati va provata insieme prima di darla per acquisita.
+
+### Cosa resta aperto
+
+- La palette e l'illuminazione sono ancora quelle di prova: la scena e' scura e il rilievo si legge
+  meno di quanto potrebbe. Vale quanto detto in T9 — e' la cosa che decide se la sala vede qualcosa.
+- Il precaricamento da otto secondi a cache fredda va nascosto dietro il momento del titolo.
+
 ## Note tecniche emerse durante la costruzione
 
 Trappole gia' incontrate, annotate perche' si ripresenterebbero a chiunque rifacesse questi test.
