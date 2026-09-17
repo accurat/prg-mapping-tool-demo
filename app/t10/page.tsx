@@ -297,18 +297,19 @@ export default function T10Page() {
       // Cosa resta quando la scena si stringe: dell'area scelta restano solo i
       // negozi che contano, tutto il resto si dissolve.
       //
-      // La dissolvenza si consuma nel **primo terzo** del movimento di camera,
-      // non per tutta la sua durata: distribuita su tutti e tre i secondi,
-      // lascerebbe in scena fin quasi alla fine collegamenti che non
-      // riguardano piu' l'area inquadrata, e che mentre la camera si raddrizza
-      // attraversano il campo visivo.
-      const vanish = Math.min(1, focus / 0.33);
-      const keepStore = (d: Store) => (focusStores.has(d) ? 1 : 1 - vanish);
-      const keepHub = (index: number) => (index === focusHub ? 1 : 1 - vanish);
+      // `focus` qui e' gia' la curva della rimozione, con la sua durata e i
+      // suoi estremi morbidi: non segue l'addolcimento del movimento di camera.
+      //
+      // Una rampa lineare di opacita' su fondo nero non si legge come una
+      // dissolvenza ma come uno spegnimento: le linee chiare restano
+      // percepibili fino a un'opacita' bassa e poi spariscono di colpo. Serve
+      // una curva che rallenti verso lo zero.
+      const keepStore = (d: Store) => (focusStores.has(d) ? 1 : 1 - focus);
+      const keepHub = (index: number) => (index === focusHub ? 1 : 1 - focus);
 
       // Appena la dissolvenza e' conclusa si passa ai dati ridotti: da qui in
       // poi cio' che non si vede non deve nemmeno occupare spazio nella scena.
-      const settled = focus >= 0.34;
+      const settled = focus >= 0.999;
       const activeStores = settled ? focusedStores : stores;
       const activeTrips = settled ? focusedTrips : trips;
       const activeHubs = settled ? [hubs[focusHub]] : hubs;
@@ -529,19 +530,28 @@ export default function T10Page() {
     [stores, hubs, trips, focusedStores, focusedTrips, tripsEnd, focusHub, focusStores, labelId],
   );
 
-  /** Anima un valore da 0 a 1 nel tempo dato, con partenza e arrivo morbidi. */
-  const animate = useCallback((ms: number, onFrame: (t: number) => void) => {
-    return new Promise<void>((resolve) => {
-      const start = performance.now();
-      const step = (now: number) => {
-        const raw = Math.min(1, (now - start) / ms);
-        onFrame(raw * raw * (3 - 2 * raw));
-        if (raw >= 1) return resolve();
+  /**
+   * Anima da 0 a 1 nel tempo dato.
+   *
+   * Passa sia il valore addolcito sia il progresso lineare: alcune cose devono
+   * seguire il movimento (e quindi l'addolcimento), altre devono avere una
+   * curva propria riferita al tempo reale.
+   */
+  const animate = useCallback(
+    (ms: number, onFrame: (eased: number, linear: number) => void) => {
+      return new Promise<void>((resolve) => {
+        const start = performance.now();
+        const step = (now: number) => {
+          const linear = Math.min(1, (now - start) / ms);
+          onFrame(linear * linear * (3 - 2 * linear), linear);
+          if (linear >= 1) return resolve();
+          requestAnimationFrame(step);
+        };
         requestAnimationFrame(step);
-      };
-      requestAnimationFrame(step);
-    });
-  }, []);
+      });
+    },
+    [],
+  );
 
   const run = useCallback(async () => {
     const m = map;
@@ -615,7 +625,12 @@ export default function T10Page() {
       duration: 3000,
       essential: true,
     });
-    await animate(3000, (t) => draw(1, 1, 1, t));
+    await animate(3000, (_eased, linear) => {
+      // La rimozione si consuma nella prima meta' del movimento, con una curva
+      // che parte piano e rallenta verso lo zero invece di spegnersi di netto.
+      const p = Math.min(1, linear / 0.5);
+      draw(1, 1, 1, p * p * (3 - 2 * p));
+    });
 
     // Il flusso non ha una fine: da qui in poi la scena resta viva, con la
     // merce che continua a viaggiare finche' qualcuno non interviene.
