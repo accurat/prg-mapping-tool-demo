@@ -296,12 +296,19 @@ export default function T10Page() {
     (rise: number, flat: number, net: number, focus = 0, flow = 0) => {
       // Cosa resta quando la scena si stringe: dell'area scelta restano solo i
       // negozi che contano, tutto il resto si dissolve.
-      const keepStore = (d: Store) => (focusStores.has(d) ? 1 : 1 - focus);
-      const keepHub = (index: number) => (index === focusHub ? 1 : 1 - focus);
+      //
+      // La dissolvenza si consuma nel **primo terzo** del movimento di camera,
+      // non per tutta la sua durata: distribuita su tutti e tre i secondi,
+      // lascerebbe in scena fin quasi alla fine collegamenti che non
+      // riguardano piu' l'area inquadrata, e che mentre la camera si raddrizza
+      // attraversano il campo visivo.
+      const vanish = Math.min(1, focus / 0.33);
+      const keepStore = (d: Store) => (focusStores.has(d) ? 1 : 1 - vanish);
+      const keepHub = (index: number) => (index === focusHub ? 1 : 1 - vanish);
 
-      // A dissolvenza conclusa si passa ai dati ridotti: da qui in poi cio' che
-      // non si vede non deve nemmeno occupare spazio nella scena.
-      const settled = focus >= 0.999;
+      // Appena la dissolvenza e' conclusa si passa ai dati ridotti: da qui in
+      // poi cio' che non si vede non deve nemmeno occupare spazio nella scena.
+      const settled = focus >= 0.34;
       const activeStores = settled ? focusedStores : stores;
       const activeTrips = settled ? focusedTrips : trips;
       const activeHubs = settled ? [hubs[focusHub]] : hubs;
