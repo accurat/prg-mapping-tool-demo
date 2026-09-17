@@ -56,22 +56,21 @@ const PHASE_LABEL: Record<Phase, string> = {
 };
 
 /**
- * Profilo di altezza dell'arco: una campana simmetrica.
+ * Profilo di altezza dell'arco.
  *
- * Con un profilo sinusoidale la pendenza e' massima proprio ai due estremi:
- * l'arco parte a candela, sale dritto e piega di colpo in cima. Il risultato
- * sembra appuntito, soprattutto qui dove l'altezza e' quasi pari alla
- * lunghezza del collegamento.
+ * La partenza e l'arrivo devono restare ripidi: l'arco si stacca da terra
+ * deciso, ed e' giusto cosi'. Quello che va addolcito e' **solo il vertice**,
+ * che con un profilo sinusoidale arriva stretto e sembra una punta.
  *
- * Questa campana ha invece **pendenza nulla in tre punti** — partenza, vertice
- * e arrivo — quindi si stacca dal suolo dolcemente, arrotonda in cima e
- * riatterra allo stesso modo. La quota massima resta identica: cambia solo come
- * ci si arriva.
+ * Questa e' una superellisse. A esponente 2 e' un arco di cerchio: fianchi
+ * ripidissimi e sommita' rotonda, che e' esattamente il compromesso cercato.
+ * Salendo di esponente la cima si allarga ancora, ma sopra il 2,5 diventa un
+ * tavolo con gli spigoli smussati invece di un arco.
  */
-function bell(t: number): number {
-  const u = t * 2;
-  const v = u <= 1 ? u : 2 - u;
-  return v * v * (3 - 2 * v);
+function archProfile(t: number): number {
+  const EXPONENT = 2.05;
+  const x = Math.abs(t * 2 - 1);
+  return Math.pow(Math.max(0, 1 - Math.pow(x, EXPONENT)), 1 / EXPONENT);
 }
 
 /**
@@ -170,7 +169,7 @@ export default function T10Page() {
         path.push([
           from[0] + (to[0] - from[0]) * t,
           from[1] + (to[1] - from[1]) * t,
-          bell(t) * apex,
+          archProfile(t) * apex,
         ]);
         timestamps.push(offset + t * SPAN);
       }
