@@ -610,9 +610,14 @@ anche in proiezione piana. Spegnendo le ombre ricompare.
 Anche qui nessun errore. Ed e' il motivo per cui il difetto era invisibile prima: T4 provava le
 ombre senza archi, T5 gli archi senza ombre.
 
-**La via d'uscita e' gratuita**, perche' i due momenti non si sovrappongono: quando la rete si
-accende i segnaposto sono gia' appiattiti, e un'ombra su una piastrella non aggiunge niente. Nella
-sequenza le ombre si spengono entrando nella fase della rete.
+**E non si puo' aggirare accendendo e spegnendo le ombre a meta' sequenza:** sostituire l'oggetto
+illuminazione mentre la scena e' in corso fa smettere deck.gl di disegnare **qualsiasi cosa**, non
+solo le ombre. Vale la regola generale che vale per i layer: gli oggetti di deck.gl si costruiscono
+una volta e non si ricreano.
+
+Quindi in una scena che contiene archi le ombre **restano spente per tutta la sequenza**. Si perde
+quello che T4 aveva misurato costare appena 0,3 millisecondi, ma T9 dice che a dodici metri
+l'altezza conta comunque poco: il rilievo lo si legge dalla tinta.
 
 ### Cosa se ne ricava per il concept
 

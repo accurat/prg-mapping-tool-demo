@@ -23,7 +23,7 @@ const HEIGHT = 1080;
 const TARGET: [number, number] = [-94.5786, 39.0997];
 const STYLE = "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json";
 
-const START_ZOOM = 2.4;
+const START_ZOOM = 0.4;
 const ARRIVAL_ZOOM = 8.6;
 const ARRIVAL_PITCH = 55;
 
@@ -62,7 +62,7 @@ const PHASE_LABEL: Record<Phase, string> = {
  * sovrappongono: quando la rete si accende i segnaposto sono gia' piatti, e
  * un'ombra su una piastrella non aggiunge niente.
  */
-function lighting(shadows: boolean) {
+function makeLighting(shadows: boolean) {
   return new LightingEffect({
     ambient: new AmbientLight({ color: [255, 255, 255], intensity: 1.0 }),
     sun: new DirectionalLight({
@@ -73,6 +73,21 @@ function lighting(shadows: boolean) {
     }),
   });
 }
+
+/**
+ * Un'unica illuminazione per tutta la sequenza, **senza ombre**.
+ *
+ * Due vincoli, scoperti solo qui:
+ *
+ * - con il passaggio delle ombre attivo l'ArcLayer non viene disegnato
+ *   affatto, quindi in una scena che contiene archi le ombre non si possono
+ *   tenere;
+ * - **cambiare illuminazione a meta' sequenza non e' una via d'uscita**:
+ *   sostituire l'effetto mentre la scena e' in corso fa smettere deck.gl di
+ *   disegnare qualsiasi cosa. Va scelta una volta e lasciata stare, come
+ *   qualsiasi altro oggetto di deck.gl che non si ricrea a ogni fotogramma.
+ */
+const LIGHT = makeLighting(false);
 
 /**
  * Colore caldo-freddo: a dodici metri la tinta e' l'unica cosa che trasmette
@@ -112,7 +127,7 @@ export default function T10Page() {
     const overlay = new MapLibreOverlay({
       interleaved: true,
       layers: [],
-      effects: [lighting(true)],
+      effects: [LIGHT],
     });
     map.addControl(overlay);
     overlayRef.current = overlay;
@@ -200,7 +215,7 @@ export default function T10Page() {
 
       overlay.setProps({
         layers: soloArchi ? layers.slice(1) : layers,
-        effects: [lighting(net === 0)],
+        effects: [LIGHT],
       });
     },
     [stores, arcs, labelId],
@@ -248,6 +263,16 @@ export default function T10Page() {
     });
     await pause(6200);
 
+    // Si torna alla proiezione piana appena atterrati.
+    //
+    // Non e' una rifinitura: finche' la mappa dichiara proiezione a globo,
+    // l'integrazione usa una vista sferica sotto cui **gli archi non vengono
+    // disegnati affatto**. Le colonne reggono, gli archi no. La discesa dal
+    // globo resta quindi intatta, e il passaggio avviene quando sullo schermo
+    // non c'e' ancora niente di nostro.
+    m.setProjection({ type: "mercator" });
+    await pause(250);
+
     setPhase("colonne");
     await animate(2600, (t) => draw(t, 0, 0));
 
@@ -285,7 +310,7 @@ export default function T10Page() {
           width={WIDTH}
           height={HEIGHT}
           styleUrl={STYLE}
-          projection="mercator"
+          projection="globe"
           onReady={handleReady}
         />
       </Stage>
