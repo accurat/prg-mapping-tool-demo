@@ -262,6 +262,69 @@ il costo delle ombre.
 - L'interlacciato con il **rilevamento del tocco attivo**, che aggiunge un passaggio di rendering.
 - Il comportamento durante la **discesa** invece che in rotazione, con le colonne gia' presenti.
 
+## T4 — il rilievo
+
+Interlacciato, sorgente CARTO, 5760x1080, inclinazione 55.
+
+| Scenario | p95 con sincronismo | Costo reale, mediana |
+| --- | --- | --- |
+| 2.000 celle, rotazione, senza ombre | 17,6 ms | 4,2 ms |
+| 10.000 celle, rotazione, senza ombre | 16,8 ms | 4,2 ms |
+| **2.000 celle, rotazione, con ombre** | 16,8 ms | **4,5 ms** |
+| **10.000 celle, rotazione, con ombre** | 16,8 ms | **4,6 ms** |
+| 10.000 celle, transizione di altezza 1,5s | 17,6 ms | 5,9 ms |
+
+**Tempo di aggregazione da punti grezzi**
+
+| Punti | Su scheda video | Su processore |
+| --- | --- | --- |
+| 10.000 | 46–50 ms | 26–27 ms |
+| 27.000 | 44–56 ms | 32–34 ms |
+| 100.000 | 38–55 ms | 40–53 ms |
+
+*Nelle prove di aggregazione la camera e' ferma, quindi il valore di 17,7 ms letto sui fotogrammi
+non e' un costo: e' la cadenza a riposo. Il numero che conta e' il tempo di aggregazione.*
+
+### Gli esiti
+
+**Il numero di celle e' ininfluente.** Duemila e diecimila costano lo stesso, 4,2 millisecondi.
+Conferma e allarga quanto gia' visto in T3.
+
+**Le ombre sono praticamente gratuite: 0,3-0,4 millisecondi**, meno del 10% in piu'. L'alternativa
+D3 del piano — rinunciare alle ombre se costano troppo — **non serve**. E' un risultato che vale la
+pena sottolineare, perche' le ombre sono cio' che rende percepibile l'altezza da dodici metri.
+
+**Il "respiro" fra oggi e un anno fa funziona e costa 5,9 millisecondi.** La transizione avviene
+sugli attributi gia' caricati, senza ricostruire la geometria: nessun intoppo, nessun fotogramma
+perso. Il momento piu' scenico del concept e' realizzabile cosi' com'e' descritto.
+
+**L'aggregazione e' molto piu' veloce del previsto: da 26 a 56 millisecondi**, fino a centomila
+punti, sia su processore sia su scheda video. Il tempo cresce pochissimo con la quantita': domina
+il costo fisso, non i punti.
+
+### Una conseguenza per il concept
+
+Il documento di concept dava per scontato che l'aggregazione fosse un'operazione di preparazione, e
+che il raggio delle celle andasse deciso prima della sessione (punti 2.10 e 5.2). **Con
+cinquanta millisecondi non e' piu' vero:** il raggio puo' essere un controllo dal vivo sul tablet,
+e cambiarlo davanti alla sala sarebbe istantaneo. Vale la pena riaprire quella decisione — e' una
+manopola espressiva in piu', non un compromesso.
+
+Anche la scelta fra aggregare su processore o su scheda video e' indifferente a queste quantita':
+si puo' tenere quella su processore, che e' piu' semplice e leggermente piu' rapida sotto i
+27.000 punti.
+
+### Cosa il test non dice
+
+**La leggibilita' non e' verificata, e a occhio non e' buona.** Con la palette usata qui — scelta
+per il test, non progettata — il rilievo si legge come una trama, non come altezza: le celle
+disegnano un tappeto invece di un paesaggio. Le ombre da sole non bastano.
+
+Non e' un problema di prestazioni ed era fuori dallo scopo di T4, ma e' la cosa piu' importante
+emersa guardandolo: **la resa dipende dalla scala verticale e dalla palette molto piu' che dalla
+tecnologia**, ed e' esattamente quello che T9 deve misurare. Da fare presto, perche' se il rilievo
+non si legge il concept non regge, e nessuno dei numeri qui sopra conta.
+
 ## Note tecniche emerse durante la costruzione
 
 Trappole gia' incontrate, annotate perche' si ripresenterebbero a chiunque rifacesse questi test.

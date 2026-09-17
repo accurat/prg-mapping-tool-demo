@@ -18,6 +18,18 @@ export function settle(map: MapHandle, timeoutMs: number): Promise<boolean> {
   });
 }
 
+/**
+ * Posiziona un layer deck.gl sotto un livello della mappa, in modalita'
+ * interlacciata.
+ *
+ * `beforeId` viene letto a runtime dall'integrazione con MapLibre, ma non
+ * compare nei tipi delle proprieta' dei layer: da qui il cast, confinato in
+ * questo punto invece di essere ripetuto a ogni layer.
+ */
+export function under(layerId?: string): object {
+  return layerId ? { beforeId: layerId } : {};
+}
+
 /** Attende N fotogrammi. */
 function nextFrames(n: number): Promise<void> {
   return new Promise((resolve) => {

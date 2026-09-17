@@ -4,9 +4,17 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { GlSurface } from "@/components/lab/GlSurface";
 import { MapSurface, type MapHandle } from "@/components/lab/MapSurface";
 import { Stage } from "@/components/lab/Stage";
-import { ColumnLayer, MapLibreOverlay } from "deck.gl";
+import {
+  AmbientLight,
+  ColumnLayer,
+  DirectionalLight,
+  HexagonLayer,
+  LightingEffect,
+  MapLibreOverlay,
+} from "deck.gl";
 import { makeHexGrid, type HexCell } from "@/lib/lab/hexGrid";
-import { prefetchDescent, settle } from "@/lib/lab/map";
+import { makeStorePoints, type StorePoint } from "@/lib/lab/points";
+import { prefetchDescent, settle, under } from "@/lib/lab/map";
 import { measure, wait, type Sample } from "@/lib/lab/measure";
 
 const WALL = { width: 5760, height: 1080 };
@@ -240,6 +248,157 @@ export default function BenchPage() {
           await wait(300);
           map.removeControl(overlay);
         }
+      }
+
+
+      if (suite === "cells") {
+        // ---- T4: il rilievo ----
+        setStep("carico la mappa per il rilievo");
+        const map = await mountMap("carto");
+        map.jumpTo({ center: TARGET, zoom: 10.2, pitch: 55, bearing: 0 });
+        await settle(map, 20000);
+        const labelId = map.getStyle().layers.find((l) => l.type === "symbol")?.id;
+
+        const overlay = new MapLibreOverlay({ interleaved: true, layers: [] });
+        map.addControl(overlay);
+
+        const lighting = (shadows: boolean) =>
+          new LightingEffect({
+            ambient: new AmbientLight({ color: [255, 255, 255], intensity: 1.0 }),
+            sun: new DirectionalLight({
+              color: [255, 255, 255],
+              intensity: 2.0,
+              direction: [-1.2, -3, -1],
+              _shadow: shadows,
+            }),
+          });
+
+        // --- T4a e T4d: celle pronte, con e senza ombre ---
+        for (const shadows of [false, true]) {
+          for (const count of [2000, 10000]) {
+            const cells = makeHexGrid({ center: TARGET, count, cellRadiusMeters: 900 });
+            overlay.setProps({
+              effects: [lighting(shadows)],
+              layers: [
+                new ColumnLayer<HexCell>({
+                  id: "celle",
+                  data: cells,
+                  diskResolution: 6,
+                  radius: 780,
+                  extruded: true,
+                  getPosition: (d) => d.position,
+                  getElevation: (d) => d.value * 9000,
+                  getFillColor: (d) => [40 + d.value * 130, 95 + d.value * 105, 155, 225],
+                  ...under(labelId),
+                }),
+              ],
+            });
+            await wait(1500);
+
+            const tag = shadows ? "con ombre" : "senza ombre";
+            setStep(`T4a · ${count} celle · ${tag}`);
+            const stop = spin(map, "bearing");
+            push({
+              test: "T4a",
+              scenario: `${count} celle pronte · rotazione · ${tag}`,
+              ...WALL,
+              ...(await measure(4000, () => map.areTilesLoaded())),
+            });
+            stop();
+            map.setBearing(0);
+          }
+        }
+
+        // --- T4c: la transizione di altezza, il "respiro" ---
+        {
+          const cells = makeHexGrid({ center: TARGET, count: 10000, cellRadiusMeters: 900 });
+          const build = (year: "oggi" | "prima") =>
+            new ColumnLayer<HexCell>({
+              id: "respiro",
+              data: cells,
+              diskResolution: 6,
+              radius: 780,
+              extruded: true,
+              getPosition: (d) => d.position,
+              getElevation: (d) => (year === "oggi" ? d.value : 1 - d.value * 0.8) * 9000,
+              getFillColor: (d) => [40 + d.value * 130, 95 + d.value * 105, 155, 225],
+              transitions: { getElevation: { duration: 1500 } },
+              updateTriggers: { getElevation: year },
+              ...under(labelId),
+            });
+
+          overlay.setProps({ effects: [lighting(true)], layers: [build("oggi")] });
+          await wait(1500);
+
+          setStep("T4c · transizione di altezza");
+          overlay.setProps({ layers: [build("prima")] });
+          push({
+            test: "T4c",
+            scenario: "10.000 celle · transizione di altezza 1,5s · con ombre",
+            ...WALL,
+            ...(await measure(1800, () => map.areTilesLoaded())),
+          });
+        }
+
+        // --- T4b: aggregazione a runtime ---
+        map.jumpTo({ center: TARGET, zoom: 7.4, pitch: 55, bearing: 0 });
+        await settle(map, 20000);
+
+        for (const gpu of [true, false]) {
+          for (const count of [10000, 27000, 100000]) {
+            const points = makeStorePoints({ center: TARGET, count });
+            setStep(`T4b · ${count} punti · ${gpu ? "scheda video" : "processore"}`);
+
+            let resolveAggregation: (ms: number) => void = () => {};
+            const aggregated = new Promise<number>((r) => (resolveAggregation = r));
+            const t0 = performance.now();
+            let reported = false;
+
+            overlay.setProps({
+              effects: [lighting(false)],
+              layers: [
+                new HexagonLayer<StorePoint>({
+                  id: `aggregate-${gpu}-${count}`,
+                  data: points,
+                  radius: 3000,
+                  extruded: true,
+                  gpuAggregation: gpu,
+                  getPosition: (d) => d.position,
+                  getElevationWeight: (d) => d.value,
+                  elevationScale: 120,
+                  onSetElevationDomain: () => {
+                    if (reported) return;
+                    reported = true;
+                    resolveAggregation(performance.now() - t0);
+                  },
+                  ...under(labelId),
+                }),
+              ],
+            });
+
+            // Il tempo di aggregazione e il peggior fotogramma del periodo:
+            // il primo dice quanto si attende, il secondo quanto si blocca.
+            const timeout = new Promise<number>((r) => window.setTimeout(() => r(-1), 20000));
+            const [ms, sample] = await Promise.all([
+              Promise.race([aggregated, timeout]),
+              measure(2500, () => map.areTilesLoaded()),
+            ]);
+
+            push({
+              test: "T4b",
+              scenario: `${count.toLocaleString("it-IT")} punti · aggregazione su ${gpu ? "scheda video" : "processore"}`,
+              ...WALL,
+              ...sample,
+              note: ms < 0 ? "aggregazione non conclusa entro 20s" : `aggregazione ${ms.toFixed(0)} ms`,
+            });
+
+            await wait(500);
+          }
+        }
+
+        overlay.setProps({ layers: [] });
+        await wait(300);
+        map.removeControl(overlay);
       }
 
       setScene({ kind: "idle" });

@@ -3,6 +3,7 @@
 import { ColumnLayer, MapLibreOverlay } from "deck.gl";
 import { useEffect, useRef } from "react";
 import type { MapHandle } from "@/components/lab/MapSurface";
+import { under } from "@/lib/lab/map";
 import type { HexCell } from "@/lib/lab/hexGrid";
 
 export type DeckMode = "sovrapposto" | "interlacciato";
@@ -75,7 +76,7 @@ export function DeckColumns({
             const t = d.value;
             return [40 + t * 120, 90 + t * 110, 150 + t * 90, 210];
           },
-          ...(mode === "interlacciato" && beforeId ? { beforeId } : {}),
+          ...(mode === "interlacciato" ? under(beforeId) : {}),
         }),
       ],
     });
