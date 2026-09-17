@@ -71,6 +71,42 @@ modo.
 | Discesa dal globo | | |
 | Sorgente tessere scelta | | |
 
+## Note tecniche emerse durante la costruzione
+
+Trappole gia' incontrate, annotate perche' si ripresenterebbero a chiunque rifacesse questi test.
+
+**MapLibre riduce da solo la risoluzione oltre 4096 pixel.** Il valore predefinito di
+`maxCanvasSize` e' 4096 e 5760 lo supera: la mappa disegna a risoluzione ridotta e lo dichiara solo
+in un avviso in console. Senza alzare quel limite si misurerebbe un muro piu' piccolo di quello
+vero, credendo il contrario. E' il motivo per cui ogni pagina di test mostra a schermo le
+dimensioni reali del buffer.
+
+**Il worker di MapLibre va servito come file statico.** MapLibre costruisce il worker da un blob
+che risolve il modulo tramite `import.meta.url`; con il bundler di sviluppo di Next quel percorso
+non viene servito come JavaScript, il worker non parte e la mappa resta nera senza errori
+evidenti. Risolto copiando worker e modulo condiviso in `public/maplibre` e indicandoli con
+`setWorkerUrl`; `scripts/sync-maplibre-worker.mjs` li tiene allineati alla versione installata.
+
+**Non attendere l'assestamento senza un limite di tempo.** Far partire la discesa solo dopo
+l'evento di assestamento sembra corretto, ma se le tessere non arrivano quell'evento non si
+verifica mai e l'apertura non parte affatto. In sala sarebbe una sessione che si apre su uno
+schermo fermo. Ora l'attesa ha un limite di tre secondi e la pagina dichiara se la partenza era
+pulita.
+
+**Il contesto WebGL non va invalidato in fase di pulizia** quando il canvas puo' essere riusato:
+in sviluppo React monta i componenti due volte e al secondo montaggio si troverebbe un contesto
+morto.
+
+## Osservazioni di progettazione emerse
+
+**Il globo occupa una frazione minima di un muro 5,33:1.** A scala planetaria la sfera e'
+dimensionata sull'altezza, quindi su 5760x1080 resta una piccola sfera al centro con enormi campi
+neri ai lati. La discesa dal globo, cosi' com'e', non riempie il muro. Da decidere: partire piu'
+vicino, affiancare altro contenuto durante l'apertura, o accettare il nero come scelta.
+
+**Il formato ultra largo a scala urbana funziona molto bene.** Alla scala d'arrivo, inclinata, la
+striscia di citta' e' leggibile e ha una sua forza: e' un fotogramma che vale la pena mostrare.
+
 ## Domande ancora aperte al cliente
 
 - [ ] Specifiche della macchina che pilota il muro

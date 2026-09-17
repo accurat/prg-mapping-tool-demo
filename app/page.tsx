@@ -2,7 +2,7 @@ import Link from "next/link";
 
 const TESTS = [
   { id: "t0", title: "Impianto", desc: "Canvas a 5760x1080, contatore fotogrammi, costo della sola superficie", ready: true },
-  { id: "t1", title: "La discesa su una citta'", desc: "MapLibre, dal globo alla scala stradale", ready: false },
+  { id: "t1", title: "La discesa su una citta'", desc: "MapLibre, dal globo alla scala stradale", ready: true },
   { id: "t2", title: "Il costo della mappa base", desc: "Stili, terreno, edifici, misurati separatamente", ready: false },
   { id: "t3", title: "deck.gl sopra MapLibre", desc: "Sovrapposto contro interlacciato", ready: false },
   { id: "t4", title: "Colonne esagonali", desc: "Il rilievo: celle, aggregazione, transizioni, ombre", ready: false },

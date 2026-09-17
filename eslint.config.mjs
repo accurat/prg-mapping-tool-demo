@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Copie di MapLibre servite come file statici: non sono nostro codice.
+    "public/maplibre/**",
   ]),
 ]);
 

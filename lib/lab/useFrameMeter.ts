@@ -15,6 +15,17 @@ export type FrameStats = {
   samples: number;
 };
 
+export type Recording = {
+  /** Etichetta della prova, per ritrovarla nella tabella dei risultati. */
+  label: string;
+  median: number;
+  min: number;
+  frames: number;
+  durationMs: number;
+  /** Quota dei fotogrammi in cui qualcosa era ancora in caricamento. */
+  unsettledShare: number;
+};
+
 const EMPTY: FrameStats = {
   median: 0,
   min: 0,
@@ -43,6 +54,15 @@ export function useFrameMeter({
 } = {}) {
   const [stats, setStats] = useState<FrameStats>(EMPTY);
 
+  const [recording, setRecording] = useState<Recording | null>(null);
+  const recActive = useRef(false);
+  const recLabel = useRef("");
+  const recDurations = useRef<number[]>([]);
+  const recUnsettled = useRef(0);
+  const recStart = useRef(0);
+  /** Interrogata a ogni fotogramma durante una registrazione. */
+  const settledProbe = useRef<(() => boolean) | null>(null);
+
   const durations = useRef<number[]>([]);
   const cursor = useRef(0);
   const filled = useRef(0);
@@ -69,6 +89,11 @@ export function useFrameMeter({
       const dt = now - last;
       last = now;
       seen.current += 1;
+
+      if (recActive.current && dt > 0) {
+        recDurations.current.push(dt);
+        if (settledProbe.current && !settledProbe.current()) recUnsettled.current += 1;
+      }
 
       if (seen.current > warmupFrames && dt > 0) {
         durations.current[cursor.current] = dt;
@@ -98,5 +123,36 @@ export function useFrameMeter({
     return () => cancelAnimationFrame(raf);
   }, [windowSize, warmupFrames, flushIntervalMs]);
 
-  return { stats, reset };
+  const startRecording = (label: string, isSettled?: () => boolean) => {
+    recLabel.current = label;
+    recDurations.current = [];
+    recUnsettled.current = 0;
+    recStart.current = performance.now();
+    settledProbe.current = isSettled ?? null;
+    recActive.current = true;
+    setRecording(null);
+  };
+
+  const stopRecording = (): Recording | null => {
+    if (!recActive.current) return null;
+    recActive.current = false;
+    settledProbe.current = null;
+
+    const samples = recDurations.current;
+    if (samples.length === 0) return null;
+
+    const sorted = [...samples].sort((a, b) => a - b);
+    const result: Recording = {
+      label: recLabel.current,
+      median: 1000 / sorted[Math.floor(sorted.length / 2)],
+      min: 1000 / sorted[sorted.length - 1],
+      frames: samples.length,
+      durationMs: performance.now() - recStart.current,
+      unsettledShare: recUnsettled.current / samples.length,
+    };
+    setRecording(result);
+    return result;
+  };
+
+  return { stats, reset, recording, startRecording, stopRecording };
 }
