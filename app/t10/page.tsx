@@ -40,6 +40,7 @@ type Phase =
   | "lettura"
   | "appiattimento"
   | "archi"
+  | "fuoco"
   | "finito";
 
 const PHASE_LABEL: Record<Phase, string> = {
@@ -50,6 +51,7 @@ const PHASE_LABEL: Record<Phase, string> = {
   lettura: "lettura",
   appiattimento: "da dato a luogo",
   archi: "la rete si accende",
+  fuoco: "si stringe su un'area",
   finito: "fine",
 };
 
@@ -138,9 +140,22 @@ export default function T10Page() {
         ]);
         timestamps.push(offset + t * SPAN);
       }
-      return { path, timestamps, value: store.value };
+      return { path, timestamps, value: store.value, hub: store.hub };
     });
   }, [stores, hubs]);
+
+  /**
+   * L'area su cui ci si stringe alla fine: l'hub con il potenziale medio piu'
+   * alto fra i propri negozi. Scelta dai dati, non fissata a mano, cosi' la
+   * sequenza indica sempre l'area che merita davvero attenzione.
+   */
+  const focusHub = useMemo(() => {
+    const totals = hubs.map((h) => {
+      const mine = stores.filter((s) => s.hub === h.index);
+      return mine.reduce((sum, s) => sum + s.value, 0) / Math.max(1, mine.length);
+    });
+    return totals.indexOf(Math.max(...totals));
+  }, [hubs, stores]);
 
   /** Istante oltre il quale ogni percorso e' completo. */
   const tripsEnd = useMemo(
@@ -172,12 +187,16 @@ export default function T10Page() {
   /**
    * Disegna la scena per un dato istante della sequenza.
    *
-   * `rise` 0..1  quanto sono emerse le colonne
-   * `flat` 0..1  quanto sono state appiattite a segnaposto
-   * `net`  0..1  quanto si e' estesa la rete
+   * `rise`  0..1  quanto sono emerse le colonne
+   * `flat`  0..1  quanto sono state appiattite a segnaposto
+   * `net`   0..1  quanto si e' estesa la rete
+   * `focus` 0..1  quanto e' svanito tutto cio' che non e' l'area scelta
    */
   const draw = useCallback(
-    (rise: number, flat: number, net: number) => {
+    (rise: number, flat: number, net: number, focus = 0) => {
+      // Quanto resta visibile di un dato hub: l'area scelta resta intera,
+      // le altre si dissolvono.
+      const keep = (hub: number) => (hub === focusHub ? 1 : 1 - focus);
       const overlay = overlayRef.current;
       if (!overlay) return;
 
@@ -202,27 +221,41 @@ export default function T10Page() {
             // per primi, cosi' ogni stella si apre dal centro verso fuori.
             const local = Math.max(0, Math.min(1, (rise - d.reach * 0.45) / 0.55));
             const dataHeight = d.value * DATA_HEIGHT_M * local;
-            return dataHeight * (1 - flat) + MARKER_HEIGHT_M * flat * local;
+            const height = dataHeight * (1 - flat) + MARKER_HEIGHT_M * flat * local;
+            // Svanendo rientrano anche nel terreno, invece di restare in piedi
+            // e sbiadire: un segnaposto trasparente ma alto resta un ingombro.
+            return height * keep(d.hub);
           },
           // Il colore resta quello del valore anche da appiattite: cambia
           // l'altezza, non il significato. La cella continua a dire quanto
           // vale, e a dodici metri e' la tinta a trasmetterlo (vedi T9).
-          getFillColor: (d) => valueColor(d.value),
-          updateTriggers: { getElevation: [rise, flat] },
+          getFillColor: (d) => {
+            const c = valueColor(d.value);
+            return [c[0], c[1], c[2], c[3] * keep(d.hub)];
+          },
+          updateTriggers: {
+            getElevation: [rise, flat, focus],
+            getFillColor: focus,
+          },
           ...under(labelId),
         }),
       );
 
       if (net > 0) {
         layers.push(
-          new TripsLayer<{ path: [number, number, number][]; timestamps: number[]; value: number }>({
+          new TripsLayer<{
+            path: [number, number, number][];
+            timestamps: number[];
+            value: number;
+            hub: number;
+          }>({
             id: "rete",
             data: trips,
             getPath: (d) => d.path,
             getTimestamps: (d) => d.timestamps,
             getColor: (d) => {
               const c = valueColor(d.value);
-              return [c[0], c[1], c[2]];
+              return [c[0], c[1], c[2], 255 * keep(d.hub)];
             },
             widthUnits: "pixels",
             getWidth: 6,
@@ -230,6 +263,7 @@ export default function T10Page() {
             // resta. Serve un disegno progressivo, non una cometa.
             trailLength: tripsEnd * 2,
             currentTime: net * tripsEnd,
+            updateTriggers: { getColor: focus },
             ...under(labelId),
           }),
         );
@@ -240,7 +274,7 @@ export default function T10Page() {
         effects: [LIGHT],
       });
     },
-    [stores, trips, tripsEnd, labelId],
+    [stores, trips, tripsEnd, focusHub, labelId],
   );
 
   /** Anima un valore da 0 a 1 nel tempo dato, con partenza e arrivo morbidi. */
@@ -312,8 +346,27 @@ export default function T10Page() {
     setPhase("archi");
     await animate(2600, (t) => draw(1, 1, t));
 
+    await pause(1800);
+
+    // Si stringe su una sola area. Il movimento della camera e la dissolvenza
+    // di tutto il resto avvengono **insieme**: se il muro si svuotasse prima,
+    // la sala vedrebbe sparire dei dati e poi un viaggio; cosi' vede una cosa
+    // sola, l'attenzione che si restringe.
+    setPhase("fuoco");
+    m.easeTo({
+      center: hubs[focusHub].position,
+      zoom: 9.6,
+      // Perpendicolare al suolo: finito il racconto in rilievo, si torna a
+      // guardare la geografia dall'alto.
+      pitch: 0,
+      bearing: 0,
+      duration: 3000,
+      essential: true,
+    });
+    await animate(3000, (t) => draw(1, 1, 1, t));
+
     setPhase("finito");
-  }, [map, draw, animate]);
+  }, [map, draw, animate, hubs, focusHub]);
 
   useEffect(() => {
     if (started.current || !map) return;

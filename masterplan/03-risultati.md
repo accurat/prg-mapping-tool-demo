@@ -585,8 +585,19 @@ Ne esce una divisione dei compiti chiara, da portare nell'implementazione:
 
 ## T10 — la sequenza completa
 
-Tutti i pezzi in fila: discesa, comparsa del rilievo, appiattimento a segnaposto, rete a stella.
-450 negozi, 5 hub, interlacciato, 5760x1080.
+Tutti i pezzi in fila: discesa dal globo, comparsa del rilievo, appiattimento a segnaposto, rete a
+stella, e infine la stretta su una sola area. 450 negozi, 5 hub, interlacciato, 5760x1080.
+
+L'area su cui la sequenza si stringe **non e' fissata a mano**: e' quella con il potenziale medio
+piu' alto fra i propri negozi. Cosi' il finale indica sempre l'area che merita attenzione in quel
+dataset, invece di una scelta arbitraria — che e' poi il comportamento che il concept chiede alle
+storie.
+
+Nella stretta finale il movimento della camera e la dissolvenza di tutto il resto avvengono
+**insieme**. Se il muro si svuotasse prima, la sala vedrebbe sparire dei dati e poi un viaggio;
+cosi' vede una cosa sola, l'attenzione che si restringe. I segnaposto che svaniscono rientrano
+anche nel terreno invece di restare in piedi e sbiadire: un segnaposto trasparente ma alto resta
+un ingombro.
 
 **Prestazioni: 59,9 fotogrammi al secondo di mediana per tutta la sequenza**, minimo 56,5. Il
 precaricamento del corridoio impiega da 4,4 a 8,1 secondi a cache fredda.
