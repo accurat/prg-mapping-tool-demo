@@ -2,11 +2,11 @@
 
 import {
   AmbientLight,
-  ArcLayer,
   ColumnLayer,
   DirectionalLight,
   LightingEffect,
   MapLibreOverlay,
+  TripsLayer,
 } from "deck.gl";
 import type { Layer } from "deck.gl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -111,9 +111,41 @@ export default function T10Page() {
 
   const { hubs, stores } = useMemo(() => makeStoreNetwork({ center: TARGET }), []);
 
-  const arcs = useMemo(
-    () => stores.map((s) => ({ store: s, hub: hubs[s.hub].position })),
-    [stores, hubs],
+  /**
+   * I collegamenti come percorsi campionati, non come archi.
+   *
+   * Un arco e' una primitiva unica: si puo' far comparire o allungare, non
+   * disegnare poco per volta. Allungarlo significa cambiargli la forma mentre
+   * appare, che e' proprio l'effetto da evitare. Un percorso con dei tempi si
+   * traccia invece lungo la sua traiettoria definitiva, che non cambia mai.
+   */
+  const trips = useMemo(() => {
+    const SAMPLES = 28;
+    const SPAN = 100;
+    return stores.map((store) => {
+      const from = hubs[store.hub].position;
+      const to = store.position;
+      const path: [number, number, number][] = [];
+      const timestamps: number[] = [];
+      // Partenze scaglionate per distanza: ogni stella si apre dal centro.
+      const offset = store.reach * 90;
+      for (let i = 0; i < SAMPLES; i++) {
+        const t = i / (SAMPLES - 1);
+        path.push([
+          from[0] + (to[0] - from[0]) * t,
+          from[1] + (to[1] - from[1]) * t,
+          Math.sin(t * Math.PI) * 34000 * (0.5 + store.value * 0.5),
+        ]);
+        timestamps.push(offset + t * SPAN);
+      }
+      return { path, timestamps, value: store.value };
+    });
+  }, [stores, hubs]);
+
+  /** Istante oltre il quale ogni percorso e' completo. */
+  const tripsEnd = useMemo(
+    () => Math.max(...trips.map((t) => t.timestamps[t.timestamps.length - 1])) + 1,
+    [trips],
   );
 
   const handleReady = useCallback((m: MapHandle) => {
@@ -183,31 +215,21 @@ export default function T10Page() {
 
       if (net > 0) {
         layers.push(
-          new ArcLayer<{ store: Store; hub: [number, number] }>({
+          new TripsLayer<{ path: [number, number, number][]; timestamps: number[]; value: number }>({
             id: "rete",
-            data: arcs,
-            getSourcePosition: (d) => d.hub,
-            getTargetPosition: (d) => {
-              // L'arco cresce dall'hub verso il negozio, scaglionato per
-              // distanza: la stella si apre invece di comparire tutta insieme.
-              const local = Math.max(0, Math.min(1, (net - d.store.reach * 0.5) / 0.5));
-              const eased = local * local * (3 - 2 * local);
-              return [
-                d.hub[0] + (d.store.position[0] - d.hub[0]) * eased,
-                d.hub[1] + (d.store.position[1] - d.hub[1]) * eased,
-              ] as [number, number];
+            data: trips,
+            getPath: (d) => d.path,
+            getTimestamps: (d) => d.timestamps,
+            getColor: (d) => {
+              const c = valueColor(d.value);
+              return [c[0], c[1], c[2]];
             },
-            getSourceColor: () => [255, 220, 150, 210],
-            getTargetColor: (d) => valueColor(d.store.value, 220),
-            getWidth: 8,
             widthUnits: "pixels",
-            // Archi alti: l'arco deve staccarsi dal suolo e leggersi come un
-            // collegamento, non come una linea disegnata sulla mappa. Il
-            // limite superiore non e' estetico — oltre una certa quota la
-            // geometria esce dal tronco di visuale della mappa e viene
-            // troncata a meta' aria.
-            getHeight: 0.75,
-            updateTriggers: { getTargetPosition: net },
+            getWidth: 6,
+            // La scia non svanisce mai: il percorso, una volta tracciato,
+            // resta. Serve un disegno progressivo, non una cometa.
+            trailLength: tripsEnd * 2,
+            currentTime: net * tripsEnd,
             ...under(labelId),
           }),
         );
@@ -218,7 +240,7 @@ export default function T10Page() {
         effects: [LIGHT],
       });
     },
-    [stores, arcs, labelId],
+    [stores, trips, tripsEnd, labelId],
   );
 
   /** Anima un valore da 0 a 1 nel tempo dato, con partenza e arrivo morbidi. */
@@ -255,34 +277,27 @@ export default function T10Page() {
 
     setPhase("discesa");
 
-    // La discesa e' un movimento solo, ma in due tratti: il cambio di
-    // proiezione avviene **nel mezzo**, non alla fine.
-    //
-    // Cambiandola all'arrivo la camera si riassesta in modo visibile, perche'
-    // a quel punto l'inclinazione e' gia' a 55 gradi e le due proiezioni la
-    // interpretano diversamente. A zoom 6 con inclinazione zero, invece, globo
-    // e piano coincidono gia' e il passaggio non si vede.
+    // Un volo solo, dal globo fino a destinazione: spezzarlo in due tratti per
+    // cambiare proiezione a meta' rende il passaggio piu' evidente, non meno,
+    // perche' a zoom intermedi la curvatura della sfera si vede ancora.
     m.flyTo({
-      center: TARGET,
-      zoom: 6,
-      pitch: 0,
-      bearing: 0,
-      duration: 3800,
-      essential: true,
-    });
-    await pause(3850);
-
-    m.setProjection({ type: "mercator" });
-
-    // Secondo tratto: qui entra l'inclinazione, in proiezione piana.
-    m.easeTo({
       center: TARGET,
       zoom: ARRIVAL_ZOOM,
       pitch: ARRIVAL_PITCH,
-      duration: 2600,
+      duration: 6000,
       essential: true,
     });
-    await pause(2700);
+    await pause(6200);
+
+    // Nessun cambio di proiezione: si resta in globo per tutta la sequenza.
+    //
+    // Su un'inquadratura larga 5760 pixel il campo visivo orizzontale e'
+    // enorme e la curvatura resta percepibile anche a zoom alti: non esiste un
+    // momento in cui il passaggio da sfera a piano non si veda. L'unico modo
+    // per non farlo vedere e' non farlo.
+    //
+    // Regge perche' la rete e' disegnata con percorsi e non con archi:
+    // l'ArcLayer sotto vista sferica non viene disegnato, i percorsi si'.
 
     setPhase("colonne");
     await animate(2600, (t) => draw(t, 0, 0));

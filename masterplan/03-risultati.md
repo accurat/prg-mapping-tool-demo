@@ -601,31 +601,35 @@ disegnato affatto**. Nessun errore, nessun avviso: semplicemente non c'e'. Le co
 reggono.
 
 E' il rischio che T1 indicava come principale per il globo — "quali dei nostri layer sopravvivono
-alla proiezione" — e si e' verificato. La contromisura G1 gia' prevista funziona: si torna alla
-proiezione piana appena atterrati, prima che la rete debba comparire.
+alla proiezione".
 
-**2. Le ombre e gli archi non convivono.** Con il passaggio delle ombre attivo, l'`ArcLayer` sparisce
-anche in proiezione piana. Spegnendo le ombre ricompare.
+**La contromisura prevista era sbagliata.** Il piano diceva di tornare alla proiezione piana appena
+atterrati. Provata in tre varianti — alla fine del volo, a meta' volo, con la camera riaffermata
+subito dopo — **il passaggio da sfera a piano si vede sempre**.
 
-Anche qui nessun errore. Ed e' il motivo per cui il difetto era invisibile prima: T4 provava le
-ombre senza archi, T5 gli archi senza ombre.
+Il motivo e' il formato del muro: su un'inquadratura larga 5760 pixel il campo visivo orizzontale
+e' enorme, e **la curvatura del globo resta percepibile anche a zoom alti**. Su un monitor normale
+le due proiezioni si somigliano gia' a zoom 6; su una striscia larga cinque volte l'altezza, no.
+Non esiste un momento in cui il cambio non si noti.
 
-**E non si puo' aggirare accendendo e spegnendo le ombre a meta' sequenza:** sostituire l'oggetto
-illuminazione mentre la scena e' in corso fa smettere deck.gl di disegnare **qualsiasi cosa**, non
-solo le ombre. Vale la regola generale che vale per i layer: gli oggetti di deck.gl si costruiscono
-una volta e non si ricreano.
+**La soluzione e' non cambiare proiezione.** Si resta in globo per tutta la sequenza, e la rete si
+disegna con **percorsi invece che con archi**: il `TripsLayer` sotto vista sferica funziona, a
+differenza dell'`ArcLayer`. Il problema sparisce invece di essere spostato.
 
-Quindi in una scena che contiene archi le ombre **restano spente per tutta la sequenza**. Si perde
-quello che T4 aveva misurato costare appena 0,3 millisecondi, ma T9 dice che a dodici metri
-l'altezza conta comunque poco: il rilievo lo si legge dalla tinta.
+Il cambio di rappresentazione non e' una rinuncia, e' un miglioramento: un arco e' una primitiva
+unica, si puo' far comparire o allungare ma non disegnare poco per volta, e allungarlo significa
+cambiargli la forma mentre appare. Un percorso con dei tempi si traccia lungo la sua traiettoria
+definitiva, che non cambia mai. E' anche la resa giusta per "la merce che arriva".
 
 ### Cosa se ne ricava per il concept
 
 - **La sequenza del concept e' realizzabile come descritta**, a sessanta fotogrammi al secondo, con
   tutti gli elementi insieme.
-- **L'apertura dal globo e la rete di rifornimento non possono coesistere nello stesso momento.**
-  Non e' un limite grave — nel concept il globo sta solo in apertura e la rete arriva molto dopo —
-  ma va scritto, perche' e' il genere di vincolo che si scopre a tre settimane dalla consegna.
+- **L'apertura dal globo e la rete possono coesistere**, a condizione che la rete sia disegnata
+  con percorsi e non con archi. Il vincolo non e' sul momento, e' sul tipo di layer.
+- **Il formato del muro cambia quali compromessi sono accettabili.** Un passaggio di proiezione
+  che su un monitor sarebbe impercettibile, su una striscia larga cinque volte l'altezza si vede.
+  Vale la pena verificare ogni transizione alla proporzione reale, non su una finestra qualunque.
 - **Vale la regola generale:** i test isolati non trovano le incompatibilita' fra elementi. Ogni
   combinazione nuova di strati va provata insieme prima di darla per acquisita.
 
