@@ -7,8 +7,8 @@ macchina va indicata **ogni volta**.
 
 | Sigla | Macchina | CPU | GPU | Sistema | Browser |
 | --- | --- | --- | --- | --- | --- |
-| M1 | | | | | |
-| M2 | | | | | |
+| M1 | MacBook Pro, 16 GB | Apple M2, 8 core | Apple M2 integrata (ANGLE/Metal) | macOS 25.5 | Chrome 152 |
+| SALA | *(da compilare quando avremo le specifiche)* | | | | |
 | SALA | *(da compilare quando avremo le specifiche)* | | | | |
 
 ## Esito dei test
@@ -70,6 +70,86 @@ modo.
 | Livello legato allo zoom | | |
 | Discesa dal globo | | |
 | Sorgente tessere scelta | | |
+
+## Serie del 17 settembre 2026 — macchina M1
+
+Eseguite dal banco automatico su `/bench`, in un Chrome avviato con la sospensione dei fotogrammi
+disattivata. Due serie: una con il sincronismo verticale attivo (dice **se** arriviamo a 60
+fotogrammi al secondo) e una senza (dice **quanto costa davvero** un fotogramma, senza il tetto dei
+16,7 ms imposto dal monitor).
+
+Tutte le misure a 5760x1080 salvo dove indicato, rapporto pixel 1, buffer verificato a schermo.
+
+| Test | Scenario | vsync: mediana | vsync: p95 | vsync: peggiore | **senza vsync: mediana** | senza vsync: p95 | tessere in ritardo |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| T0 | scena vuota, 1 passaggi di riempimento | 16.7 ms | 17.5 ms | 18 ms | **0.4 ms** | 2.4 ms | 0% |
+| T0 | scena vuota, 4 passaggi di riempimento | 16.7 ms | 17.6 ms | 18 ms | **2.2 ms** | 2.4 ms | 0% |
+| T0 | scena vuota, 8 passaggi di riempimento | 16.7 ms | 17.6 ms | 20 ms | **2.3 ms** | 2.4 ms | 0% |
+| T0 | scena vuota, 1 passaggio di riempimento | 16.7 ms | 17.7 ms | 18 ms | **2.2 ms** | 2.4 ms | 0% |
+| T2 | CARTO dark matter · rotazione continua, inclinazione 55 | 16.7 ms | 16.8 ms | 18 ms | **4.6 ms** | 7.9 ms | 40% |
+| T2 | CARTO dark matter · zoom continuo | 16.7 ms | 16.8 ms | 33 ms | **4.9 ms** | 11.1 ms | 31% |
+| T1 | CARTO dark matter · discesa dal globo · 6s · globo | 16.7 ms | 16.8 ms | 49 ms | **4.5 ms** | 11.5 ms | 43% |
+| T1 | CARTO dark matter · discesa continentale · 6s · globo | 16.7 ms | 17.5 ms | 50 ms | **2.8 ms** | 13.1 ms | 43% |
+| T1 | CARTO dark matter · discesa statale · 6s · globo | 16.7 ms | 16.9 ms | 33 ms | **4.0 ms** | 14.1 ms | 28% |
+| T2 | OpenFreeMap dark · rotazione continua, inclinazione 55 | 16.7 ms | 16.8 ms | 17 ms | **3.0 ms** | 5.2 ms | 56% |
+| T2 | OpenFreeMap dark · zoom continuo | 16.7 ms | 16.8 ms | 18 ms | **3.5 ms** | 6.5 ms | 31% |
+| T1 | OpenFreeMap dark · discesa dal globo · 6s · globo | 16.7 ms | 17.1 ms | 83 ms | **3.6 ms** | 7.1 ms | 43% |
+| T1 | OpenFreeMap dark · discesa continentale · 6s · globo | 16.7 ms | 16.8 ms | 18 ms | **3.2 ms** | 7.7 ms | 39% |
+| T1 | OpenFreeMap dark · discesa statale · 6s · globo | 16.7 ms | 16.8 ms | 18 ms | **3.6 ms** | 7.6 ms | 27% |
+
+### Come si leggono
+
+**Con il sincronismo attivo, tutto sta a 60 fotogrammi al secondo.** Mediana 16,7 ms ovunque:
+scena vuota, mappa in rotazione, mappa in zoom, tutte e sei le discese. Il criterio di
+accettazione principale del masterplan e' rispettato su questa macchina.
+
+**Senza sincronismo si vede il margine, ed e' molto ampio.** Un fotogramma costa da 2,2 a 4,9
+millisecondi contro i 16,7 disponibili: **resta circa il 70-85% del tempo di calcolo libero** per
+tutto quello che dovremo aggiungere sopra (colonne, archi, punti, selezione).
+
+**Il riempimento dei pixel non e' il collo di bottiglia.** Otto passaggi a tutto schermo su
+5760x1080 costano quanto uno: 2,3 contro 2,2 millisecondi. E 1920x1080 costa quanto 5760x1080. Il
+costo fisso per fotogramma domina, i pixel no. La risoluzione del muro, da sola, non e' un
+problema.
+
+**I cali di fotogrammi ci sono, e stanno tutti nelle discese.** Il peggior fotogramma durante le
+discese arriva a 49-50 ms con CARTO e 83 ms con OpenFreeMap: da tre a cinque fotogrammi persi in un
+colpo. Il masterplan chiede che non ci siano cali sotto i 30 fotogrammi al secondo, e questi li
+violano. Non e' carico grafico — la mediana resta a 16,7 — sono intoppi puntuali, verosimilmente
+elaborazione delle tessere sul filo principale.
+
+**Le tessere sono in ritardo per un quarto o meta' della discesa.** Dal 27% al 56% dei fotogrammi
+di una discesa hanno ancora tessere in arrivo. E' la conferma quantitativa del rischio che il
+masterplan indicava come principale, e la conferma visiva e' peggiore del numero (vedi sotto).
+
+**Nota sulla prima riga.** Il valore di 0,4 ms della prima misura e' un artefatto: e' il primo
+scenario della serie e la scena non stava ancora disegnando. Le altre tre righe di T0, con la
+stessa configurazione, sono coerenti fra loro a 2,2-2,3 ms.
+
+### La discesa vista con gli occhi
+
+Fotogrammi catturati durante una discesa dal globo con CARTO, durata 6 secondi.
+
+**A meta' volo, intorno a zoom 13,8, il muro e' quasi vuoto.** Al centro c'e' una chiazza di citta'
+con bordi netti; tutto il resto dei 5760 pixel e' nero. Non e' un difetto di prestazioni — il
+contatore in quel momento segna 59,9 fotogrammi al secondo con minimo 57,5 — sono le tessere che
+non arrivano abbastanza in fretta per coprire un'inquadratura cosi' larga e cosi' inclinata.
+
+**Verso la fine, a zoom 15,2, l'immagine e' piena e nitida**, e alla scala d'arrivo il formato
+ultra largo e' notevole.
+
+Quindi il problema della discesa non e' la fluidita': e' **la copertura**. Le contromisure da
+provare, in ordine: discesa piu' lenta, precaricamento lungo il percorso, inclinazione che cresce
+solo verso la fine invece che per tutto il volo, partenza da scala continentale invece che dal
+globo.
+
+### Quale sorgente di tessere
+
+Le due si equivalgono nel costo di calcolo. OpenFreeMap e' leggermente piu' economica in rotazione
+e zoom, CARTO ha intoppi un po' meno gravi nelle discese. In una prima serie precedente
+OpenFreeMap aveva mostrato ritardi molto piu' alti (fino al 100% della discesa, con 4,75 secondi di
+assestamento), quindi **i dati di rete sono rumorosi e vanno rifatti**, possibilmente con una
+sorgente servita da noi come terzo termine di confronto.
 
 ## Note tecniche emerse durante la costruzione
 

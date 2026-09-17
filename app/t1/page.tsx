@@ -114,6 +114,16 @@ export default function T1Page() {
     });
   }, [duration, flying, projection, sourceKey, startKey, startRecording, stopRecording]);
 
+  // Avvio automatico con ?auto=1: serve a poter catturare fotogrammi durante la
+  // discesa dall'esterno, senza dipendere dal momento in cui si preme un tasto.
+  const autoStarted = useRef(false);
+  useEffect(() => {
+    if (autoStarted.current || !mapRef.current) return;
+    if (!new URLSearchParams(window.location.search).has("auto")) return;
+    autoStarted.current = true;
+    window.setTimeout(runDescent, 2500);
+  }, [runDescent, bufferSize]);
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.code === "Space") {
