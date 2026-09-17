@@ -153,7 +153,11 @@ export default function T10Page() {
         typeof window !== "undefined" &&
         new URLSearchParams(window.location.search).get("solo") === "archi";
 
-      const layers: Layer[] = [
+      const layers: Layer[] = [];
+
+      // Durante la discesa i negozi non ci sono ancora: altrimenti si vedrebbe
+      // una macchia colorata sul territorio prima che la scena cominci.
+      if (rise > 0) layers.push(
         new ColumnLayer<Store>({
           id: "negozi",
           data: stores,
@@ -168,21 +172,14 @@ export default function T10Page() {
             const dataHeight = d.value * DATA_HEIGHT_M * local;
             return dataHeight * (1 - flat) + MARKER_HEIGHT_M * flat * local;
           },
-          getFillColor: (d) => {
-            const c = valueColor(d.value);
-            // Appiattendosi perdono anche il colore del dato: smettono di
-            // dire "quanto vale" e dicono solo "qui c'e' un negozio".
-            return [
-              c[0] * (1 - flat) + 150 * flat,
-              c[1] * (1 - flat) + 170 * flat,
-              c[2] * (1 - flat) + 195 * flat,
-              235,
-            ];
-          },
-          updateTriggers: { getElevation: [rise, flat], getFillColor: flat },
+          // Il colore resta quello del valore anche da appiattite: cambia
+          // l'altezza, non il significato. La cella continua a dire quanto
+          // vale, e a dodici metri e' la tinta a trasmetterlo (vedi T9).
+          getFillColor: (d) => valueColor(d.value),
+          updateTriggers: { getElevation: [rise, flat] },
           ...under(labelId),
         }),
-      ];
+      );
 
       if (net > 0) {
         layers.push(
@@ -204,9 +201,12 @@ export default function T10Page() {
             getTargetColor: (d) => valueColor(d.store.value, 220),
             getWidth: 8,
             widthUnits: "pixels",
-            // Archi bassi: con apici alti la geometria esce dal tronco di
-            // visuale della mappa e viene troncata a meta' aria.
-            getHeight: 0.12,
+            // Archi alti: l'arco deve staccarsi dal suolo e leggersi come un
+            // collegamento, non come una linea disegnata sulla mappa. Il
+            // limite superiore non e' estetico — oltre una certa quota la
+            // geometria esce dal tronco di visuale della mappa e viene
+            // troncata a meta' aria.
+            getHeight: 0.75,
             updateTriggers: { getTargetPosition: net },
             ...under(labelId),
           }),
@@ -254,24 +254,35 @@ export default function T10Page() {
     await settle(m, 4000);
 
     setPhase("discesa");
+
+    // La discesa e' un movimento solo, ma in due tratti: il cambio di
+    // proiezione avviene **nel mezzo**, non alla fine.
+    //
+    // Cambiandola all'arrivo la camera si riassesta in modo visibile, perche'
+    // a quel punto l'inclinazione e' gia' a 55 gradi e le due proiezioni la
+    // interpretano diversamente. A zoom 6 con inclinazione zero, invece, globo
+    // e piano coincidono gia' e il passaggio non si vede.
     m.flyTo({
+      center: TARGET,
+      zoom: 6,
+      pitch: 0,
+      bearing: 0,
+      duration: 3800,
+      essential: true,
+    });
+    await pause(3850);
+
+    m.setProjection({ type: "mercator" });
+
+    // Secondo tratto: qui entra l'inclinazione, in proiezione piana.
+    m.easeTo({
       center: TARGET,
       zoom: ARRIVAL_ZOOM,
       pitch: ARRIVAL_PITCH,
-      duration: 6000,
+      duration: 2600,
       essential: true,
     });
-    await pause(6200);
-
-    // Si torna alla proiezione piana appena atterrati.
-    //
-    // Non e' una rifinitura: finche' la mappa dichiara proiezione a globo,
-    // l'integrazione usa una vista sferica sotto cui **gli archi non vengono
-    // disegnati affatto**. Le colonne reggono, gli archi no. La discesa dal
-    // globo resta quindi intatta, e il passaggio avviene quando sullo schermo
-    // non c'e' ancora niente di nostro.
-    m.setProjection({ type: "mercator" });
-    await pause(250);
+    await pause(2700);
 
     setPhase("colonne");
     await animate(2600, (t) => draw(t, 0, 0));

@@ -629,6 +629,17 @@ l'altezza conta comunque poco: il rilievo lo si legge dalla tinta.
 - **Vale la regola generale:** i test isolati non trovano le incompatibilita' fra elementi. Ogni
   combinazione nuova di strati va provata insieme prima di darla per acquisita.
 
+### Il cambio di proiezione va fatto a meta' discesa, non alla fine
+
+Cambiando proiezione all'arrivo, la camera si riassesta in modo visibile: a quel punto
+l'inclinazione e' gia' a 55 gradi e le due proiezioni la interpretano diversamente. In proiezione
+piana il salto non si verifica, il che conferma che e' il passaggio a causarlo.
+
+La discesa e' quindi in due tratti: dal globo fino a zoom 6 con inclinazione zero, li' si passa
+alla proiezione piana, poi il secondo tratto porta a destinazione ed e' li' che entra
+l'inclinazione. A zoom 6 con inclinazione zero globo e piano coincidono gia' visivamente, e il
+passaggio non si vede.
+
 ### Cosa resta aperto
 
 - La palette e l'illuminazione sono ancora quelle di prova: la scena e' scura e il rilievo si legge
