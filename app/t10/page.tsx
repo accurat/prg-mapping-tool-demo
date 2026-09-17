@@ -163,8 +163,16 @@ export default function T10Page() {
       const from = hubs[store.hub].position;
       const to = store.position;
 
-      // L'altezza dell'arco e' una **proporzione della sua lunghezza**, non un
-      // valore fisso.
+      // I collegamenti corrono **sopra** i segnaposto, partendo e arrivando
+      // alla loro sommita' invece che da terra.
+      //
+      // Partendo da terra i primi chilometri di ogni arco restano dentro il
+      // volume della colonna dell'hub, e le due geometrie si contendono la
+      // profondita': sul muro compare una raggiera di strisce attorno al
+      // centro. Piu' l'hub e' largo, piu' e' vistoso.
+      //
+      // L'altezza dell'arco e' poi una **proporzione della sua lunghezza**, non
+      // un valore fisso.
       //
       // Con un'altezza uguale per tutti, un negozio a pochi chilometri dal
       // proprio hub riceveva un arco alto quanto quelli lunghi: una guglia
@@ -186,7 +194,7 @@ export default function T10Page() {
         path.push([
           from[0] + (to[0] - from[0]) * t,
           from[1] + (to[1] - from[1]) * t,
-          archProfile(t) * apex,
+          MARKER_HEIGHT_M + archProfile(t) * apex,
         ]);
         timestamps.push(offset + t * SPAN);
       }
@@ -225,6 +233,28 @@ export default function T10Page() {
     const byVolume = [...mine].sort((a, b) => b.volume - a.volume).slice(0, 6);
     return new Set([...byPotential, ...byVolume]);
   }, [stores, focusHub]);
+
+  /**
+   * Le versioni ridotte dei dati, con i soli elementi che sopravvivono alla
+   * stretta finale.
+   *
+   * Servono perche' **una geometria del tutto trasparente scrive comunque nel
+   * buffer di profondita'**: un collegamento a opacita' zero continua a
+   * nascondere quello che gli sta dietro, e nel finale copriva l'hub. Azzerare
+   * l'opacita' non basta, gli elementi vanno tolti dai dati.
+   *
+   * Si sostituiscono a fine transizione, non a ogni fotogramma: cambiare
+   * l'insieme dei dati a ogni disegno costringerebbe a ricostruire gli
+   * attributi sessanta volte al secondo.
+   */
+  const focusedStores = useMemo(
+    () => stores.filter((d) => focusStores.has(d)),
+    [stores, focusStores],
+  );
+  const focusedTrips = useMemo(
+    () => trips.filter((d) => focusStores.has(d.store)),
+    [trips, focusStores],
+  );
 
   /** Istante oltre il quale ogni percorso e' completo. */
   const tripsEnd = useMemo(
@@ -268,6 +298,13 @@ export default function T10Page() {
       // negozi che contano, tutto il resto si dissolve.
       const keepStore = (d: Store) => (focusStores.has(d) ? 1 : 1 - focus);
       const keepHub = (index: number) => (index === focusHub ? 1 : 1 - focus);
+
+      // A dissolvenza conclusa si passa ai dati ridotti: da qui in poi cio' che
+      // non si vede non deve nemmeno occupare spazio nella scena.
+      const settled = focus >= 0.999;
+      const activeStores = settled ? focusedStores : stores;
+      const activeTrips = settled ? focusedTrips : trips;
+      const activeHubs = settled ? [hubs[focusHub]] : hubs;
 
       /**
        * Posizione e visibilita' dei carichi lungo i collegamenti.
@@ -357,7 +394,7 @@ export default function T10Page() {
       const layers: Layer[] = [
         new ColumnLayer<Store>({
           id: "negozi",
-          data: stores,
+          data: activeStores,
           diskResolution: 6,
           radius: 2600,
           extruded: true,
@@ -392,7 +429,7 @@ export default function T10Page() {
 
         new TripsLayer<{ path: [number, number, number][]; timestamps: number[]; store: Store }>({
           id: "rete",
-          data: trips,
+          data: activeTrips,
           getPath: (d) => d.path,
           getTimestamps: (d) => d.timestamps,
           getColor: (d) => {
@@ -422,12 +459,12 @@ export default function T10Page() {
          */
         new ColumnLayer<Hub>({
           id: "hub",
-          data: hubs,
+          data: activeHubs,
           diskResolution: 6,
-          // Alto quanto i negozi: quando restano solo dodici collegamenti il
-          // centro non e' piu' affollato, e una torre svetterebbe senza motivo.
-          // A distinguerlo bastano il colore e il raggio maggiore.
-          radius: 3400,
+          // Alto quanto i negozi ma nettamente piu' largo: un hub serve decine
+          // di punti vendita, e con un raggio di poco superiore finiva per
+          // sembrare il piu' piccolo dei nodi invece del piu' importante.
+          radius: 6000,
           extruded: true,
           getPosition: (d) => d.position,
           getElevation: () => MARKER_HEIGHT_M * flat,
@@ -482,7 +519,7 @@ export default function T10Page() {
         effects: [LIGHT],
       });
     },
-    [stores, hubs, trips, tripsEnd, focusHub, focusStores, labelId],
+    [stores, hubs, trips, focusedStores, focusedTrips, tripsEnd, focusHub, focusStores, labelId],
   );
 
   /** Anima un valore da 0 a 1 nel tempo dato, con partenza e arrivo morbidi. */

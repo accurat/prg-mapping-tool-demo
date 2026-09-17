@@ -674,6 +674,20 @@ al secondo e il minimo 59,5 — il piu' alto misurato in tutta la sequenza. Rica
 centinaio di posizioni per fotogramma non si vede: a incidere sarebbe stato ricreare un layer, non
 aggiornarne i dati.
 
+### Una geometria trasparente occupa comunque lo spazio
+
+Nella stretta finale l'hub risultava coperto da qualcosa che non si vedeva. La causa: **una
+geometria del tutto trasparente scrive comunque nel buffer di profondita'**. I collegamenti dei
+negozi dissolti avevano opacita' zero ma continuavano a nascondere quello che avevano dietro.
+
+Azzerare l'opacita' non basta: a dissolvenza conclusa gli elementi vanno **tolti dai dati**. Nel
+test la sostituzione avviene una volta sola a fine transizione, non a ogni fotogramma, perche'
+cambiare l'insieme dei dati a ogni disegno costringerebbe a ricostruire gli attributi sessanta
+volte al secondo.
+
+E' la stessa famiglia di problemi degli oggetti ricreati in corsa: **cio' che non si vede continua
+a costare e a interferire finche' non lo si toglie davvero.**
+
 ### Il costo nascosto del primo disegno
 
 Entrando in una fase nuova si perdeva **un fotogramma solo**: la mediana restava a 59,9 al secondo
