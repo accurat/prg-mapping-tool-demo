@@ -325,6 +325,100 @@ emersa guardandolo: **la resa dipende dalla scala verticale e dalla palette molt
 tecnologia**, ed e' esattamente quello che T9 deve misurare. Da fare presto, perche' se il rilievo
 non si legge il concept non regge, e nessuno dei numeri qui sopra conta.
 
+## T9 — leggibilita' a dodici metri
+
+Spostato in cima alle priorita' dopo T4, dove il rilievo funzionava tecnicamente ma si leggeva come
+una trama. Qui non si misurano prestazioni: si misura se la cosa si vede.
+
+### Metodo
+
+Due riferimenti fisici, da cui discende tutto il resto:
+
+- il muro e' largo **6 metri su 5760 pixel**, quindi **un pixel vale 1,04 mm**;
+- un occhio normale distingue dettagli separati da **circa un minuto d'arco**, che a dodici metri
+  corrisponde a **3,5 pixel**. Sotto quella soglia le cose non si sfocano: spariscono.
+
+La pagina `/t9` mostra questi numeri a schermo e li calcola per la dimensione della cella corrente.
+Per giudicare l'effetto complessivo, ogni configurazione e' stata catturata a piena risoluzione e
+poi **ridotta di venti volte**: guardare l'immagine ridotta equivale, come angolo visivo, a
+guardare il muro da dodici metri.
+
+*Limite del metodo:* la riduzione modella la perdita di risolvenza, non il contrasto percepito, la
+luce della sala, ne' il fatto che chi guarda puo' spostarsi e mettere a fuoco. Va confermato su uno
+schermo grande vero, ma serve gia' a scartare le configurazioni che non hanno speranza.
+
+### Cosa si vede e cosa no
+
+| Configurazione | Cella a schermo | Angolo | A dodici metri |
+| --- | --- | --- | --- |
+| Scala urbana, celle 3 km | 8 px | 2,4' | **Sparisce.** Una macchia chiara indistinta |
+| Scala nazionale, celle 45 km | 14 px | 4,1' | Trama appena percepibile, nessuna struttura |
+| Scala statale, celle 14 km | 19 px | 5,8' | La **forma d'insieme** si vede, le differenze interne no |
+
+**Nessuna delle tre e' sufficiente.** Perche' una cella si legga come un oggetto e non come grana
+servono almeno dieci minuti d'arco, cioe' **circa 35 pixel**; per leggerla senza sforzo, una
+quindicina di minuti, cioe' **una cinquantina di pixel**.
+
+### La conseguenza piu' importante: il limite non e' tecnico, e' percettivo
+
+A 45 pixel per cella, sull'intera superficie del muro **ci stanno circa tremila celle**. Non
+diecimila.
+
+E' un risultato che ribalta la lettura di T3 e T4: li' avevamo stabilito che diecimila celle non
+costano nulla, e ne avevamo dedotto che potevamo permettercene quante volevamo. **Il vincolo vero
+arriva molto prima, e non dalla scheda video: arriva dall'occhio di chi guarda da dodici metri.**
+Aggiungere celle oltre le tremila non aggiunge informazione, aggiunge rumore.
+
+### L'altra scoperta: a distanza parla il colore, non l'altezza
+
+Confrontando le palette a parita' di tutto il resto:
+
+- **chiaroscuro** (altezza uguale luminosita'): a dodici metri resta una cupola chiara. Si capisce
+  che qualcosa e' rialzato al centro, ma non **quale** area sia alta. Il rilievo diventa un unico
+  blocco;
+- **caldo-freddo** (altezza uguale tinta): le differenze restano leggibili. Le zone calde si
+  staccano da quelle fredde anche nell'immagine ridotta.
+
+E' la scoperta che tocca piu' da vicino il concept. Il documento assegna **l'altezza al potenziale
+inespresso e il colore alla performance attuale**. Se a dodici metri l'altezza non trasmette
+differenze e la tinta si', allora **la sala sta leggendo la performance, non l'opportunita'** —
+cioe' il contrario di quello che volevamo dire.
+
+Non e' una smentita del concept: l'altezza continua a funzionare quando la camera si avvicina, da
+chi guarda lo schermo centrale, e sul tablet. Ma la gerarchia va rivista: **l'informazione
+principale deve stare nella tinta**, e l'altezza deve rinforzarla invece di portare da sola un
+secondo significato.
+
+### Un effetto collaterale dell'esagerazione verticale
+
+Alzando l'esagerazione da 4x a 8x il rilievo **si scurisce invece di risaltare**: le colonne
+diventano alte, si vedono soprattutto le facce laterali che sono in ombra, e i piani superiori —
+che sono quelli che portano colore e luce — spariscono dietro le colonne davanti. Oltre un certo
+punto piu' esagerazione significa meno leggibilita', non piu'.
+
+### Il testo
+
+Dal provino a schermo, sul muro:
+
+| Dimensione | In millimetri | Angolo a 12 m | Giudizio |
+| --- | --- | --- | --- |
+| 24 px | 25 mm | 7,2' | visibile, faticoso |
+| **36 px** | 38 mm | 10,7' | **minimo accettabile** |
+| 48 px | 50 mm | 14,3' | comodo |
+| 96 px | 100 mm | 28,6' | titoli |
+
+**Nessun testo sotto i 36 pixel sul muro.** E' un numero che si puo' applicare subito alla striscia
+di contesto e ai pannelli laterali descritti nel documento dei layout.
+
+### Cosa fare adesso
+
+1. **Rivedere la gerarchia colore/altezza nel concept** alla luce di quanto sopra.
+2. **Fissare il numero massimo di celle a schermo attorno a tremila**, e legarlo alla scala invece
+   che lasciarlo libero.
+3. **Progettare la palette**, che finora e' stata scelta a caso: e' il singolo elemento che decide
+   se la sala vede qualcosa.
+4. **Confermare su uno schermo grande vero.** Tutto quanto sopra viene da immagini ridotte.
+
 ## Note tecniche emerse durante la costruzione
 
 Trappole gia' incontrate, annotate perche' si ripresenterebbero a chiunque rifacesse questi test.
