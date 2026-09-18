@@ -445,7 +445,13 @@ L'unica voce con un costo costante, in entrambe le condizioni, sono i **numeri c
 a ogni fotogramma: +0,1 ms**, cioè lo 0,6% del budget. È reale ma trascurabile: se i numeri
 devono salire, possono salire.
 
-**La sfocatura non si conferma.** Una misura precedente, presa nel pannello incorporato dell'app,
+**La sfocatura: attenzione a cosa si misurava.** Nella prima versione il rettangolo sfocato era
+sovrapposto alla cornice, quindi sfocava **il testo della striscia** invece della mappa dietro di
+essa — un'operazione che nessuno vorrebbe mai. Ora la sfocatura è del fondo della striscia, che è
+l'unica cosa che avrebbe senso sfocare. L'area coinvolta è identica, quindi il costo misurato
+resta indicativo, ma il prossimo giro della prova misura la cosa giusta.
+
+**L'intoppo da 100 ms non si conferma.** Una misura precedente, presa nel pannello incorporato dell'app,
 aveva mostrato un intoppo da 100 millisecondi al primo disegno della sfocatura. In una finestra
 vera non si riproduce. Teneva la regola per il motivo sbagliato: la regola resta — niente
 `backdrop-filter` — ma perché **non serve a niente**, non perché costi.

@@ -179,7 +179,7 @@ export function Riga({
  * E' l'unico elemento presente per tutta la sessione. Serve a chi entra a meta'
  * e a chi ha perso il filo, che in una sala sono la maggioranza.
  */
-export function Striscia({ voci }: { voci: string[] }) {
+export function Striscia({ voci, sfocata = false }: { voci: string[]; sfocata?: boolean }) {
   return (
     <div
       style={{
@@ -188,7 +188,11 @@ export function Striscia({ voci }: { voci: string[] }) {
         alignItems: "center",
         justifyContent: "center",
         gap: SPAZI.interno,
-        background: COLORI.fondo,
+        // Con la sfocatura il fondo si alleggerisce: altrimenti sfocherebbe
+        // qualcosa che non si vede comunque, che e' il modo piu' rapido di
+        // pagare un effetto senza ottenerlo.
+        background: sfocata ? "rgba(8, 10, 14, 0.42)" : COLORI.fondo,
+        backdropFilter: sfocata ? "blur(14px)" : undefined,
         borderTop: `2px solid ${COLORI.bordo}`,
         fontSize: TIPI.corrente,
       }}

@@ -379,6 +379,12 @@ function Scena({
               ),
               striscia: (
                 <Striscia
+                  // La sfocatura e' sotto misura: sfoca **la mappa dietro la
+                  // striscia**, che e' l'unica cosa che avrebbe senso sfocare.
+                  // Un rettangolo sovrapposto alla cornice, come nel primo
+                  // tentativo, sfoca invece il testo della striscia: misura
+                  // un'operazione che nessuno vorrebbe mai.
+                  sfocata={sfocatura}
                   voci={[
                     luogo,
                     `${conta(sintesi.negozi)} negozi riforniti`,
@@ -390,21 +396,6 @@ function Scena({
               ),
             }}
           />
-          {sfocatura ? (
-            // Solo per la misura: e' esattamente quello che il pannello di
-            // diagnosi fa con `backdrop-blur`, su una superficie trenta volte
-            // piu' grande.
-            <div
-              className="pointer-events-none absolute"
-              style={{
-                left: 0,
-                top: HEIGHT - 96,
-                width: WIDTH,
-                height: 96,
-                backdropFilter: "blur(12px)",
-              }}
-            />
-          ) : null}
         </div>
       </Stage>
 
