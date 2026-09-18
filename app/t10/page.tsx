@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Hud, HudPanel, Row, fpsTone } from "@/components/lab/Hud";
 import { MapSurface, type MapHandle } from "@/components/lab/MapSurface";
 import { Stage } from "@/components/lab/Stage";
@@ -8,7 +8,7 @@ import { makeStoreNetwork } from "@/lib/lab/network";
 import { useFrameMeter } from "@/lib/lab/useFrameMeter";
 import { useRenderTrust } from "@/lib/lab/useRenderTrust";
 import type { DatiScena } from "@/lib/scena/dati";
-import { NOMI_FASE, START_ZOOM, useSequenza } from "@/lib/scena/sequenza";
+import { NOMI_FASE, START_ZOOM, useSequenza, type Inclinazione } from "@/lib/scena/sequenza";
 
 /**
  * T10 — la sequenza completa, su dati sintetici.
@@ -28,6 +28,7 @@ const STYLE = "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json"
 export default function T10Page() {
   const [map, setMap] = useState<MapHandle | null>(null);
   const [labelId, setLabelId] = useState<string | undefined>();
+  const [inclinazione, setInclinazione] = useState<Inclinazione>("discesa");
 
   const { stats } = useFrameMeter();
   const trust = useRenderTrust(stats.medianMs);
@@ -63,7 +64,28 @@ export default function T10Page() {
     setMap(m);
   }, []);
 
-  const { fase, prefetchMs } = useSequenza({ map, labelId, dati });
+  const { fase, prefetchMs, esegui } = useSequenza({ map, labelId, dati, inclinazione });
+
+  useEffect(() => {
+    const suTasto = (e: KeyboardEvent) => {
+      if (e.key === "i" || e.key === "I") {
+        setInclinazione((v) => (v === "discesa" ? "fuoco" : "discesa"));
+      }
+    };
+    window.addEventListener("keydown", suTasto);
+    return () => window.removeEventListener("keydown", suTasto);
+  }, []);
+
+  // Cambiare l'ordine a meta' sequenza non direbbe niente: i due ordini si
+  // confrontano solo dall'inizio, quindi l'interruttore fa ripartire il volo.
+  const primoGiro = useRef(true);
+  useEffect(() => {
+    if (primoGiro.current) {
+      primoGiro.current = false;
+      return;
+    }
+    void esegui();
+  }, [inclinazione, esegui]);
 
   return (
     <main className="h-screen w-screen overflow-hidden bg-black">
@@ -81,6 +103,11 @@ export default function T10Page() {
         <div className="flex items-start gap-3">
           <HudPanel title="T10 — sequenza completa">
             <Row label="momento" value={NOMI_FASE[fase]} tone="good" />
+            <Row
+              label="inclinazione"
+              value={inclinazione === "discesa" ? "nella discesa" : "nella stretta"}
+              tone="warn"
+            />
             <Row
               label="fotogrammi mediana"
               value={`${stats.median.toFixed(1)}/s`}
@@ -121,7 +148,8 @@ export default function T10Page() {
           ) : null}
           <HudPanel>
             <div className="text-white/60">
-              <b className="text-white">R</b> ripeti la sequenza
+              <b className="text-white">R</b> ripeti la sequenza · <b className="text-white">I</b>{" "}
+              sposta l&apos;inclinazione (discesa ↔ stretta)
             </div>
           </HudPanel>
         </div>

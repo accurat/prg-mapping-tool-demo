@@ -32,6 +32,19 @@ import type { DatiScena } from "./dati";
 
 export const START_ZOOM = 0.4;
 
+/**
+ * Dove sta l'inclinazione nella sequenza.
+ *
+ * `discesa` e' l'ordine originale: si arriva inclinati, si guarda il rilievo in
+ * prospettiva, e alla stretta finale ci si mette perpendicolari al suolo.
+ *
+ * `fuoco` e' l'ordine inverso: si arriva a picco — il paese si legge come una
+ * carta, e quello che parla e' il colore — e si inclina solo quando la scena si
+ * stringe su una stella, dove l'altezza delle celle ha qualcosa da dire e ci
+ * sono poche cose in campo per leggerla.
+ */
+export type Inclinazione = "discesa" | "fuoco";
+
 export type Fase =
   | "attesa"
   | "preparazione"
@@ -51,7 +64,7 @@ export const NOMI_FASE: Record<Fase, string> = {
   lettura: "lettura",
   appiattimento: "da dato a luogo",
   archi: "la rete si accende",
-  fuoco: "si stringe su una stella",
+  fuoco: "si stringe sull'area",
   flusso: "la merce scorre",
 };
 
@@ -108,11 +121,13 @@ export function useSequenza({
   labelId,
   dati,
   automatica = true,
+  inclinazione = "discesa",
 }: {
   map: MapHandle | null;
   labelId: string | undefined;
   dati: DatiScena;
   automatica?: boolean;
+  inclinazione?: Inclinazione;
 }) {
   const [fase, setFase] = useState<Fase>("attesa");
   const [prefetchMs, setPrefetchMs] = useState<number | null>(null);
@@ -417,6 +432,12 @@ export function useSequenza({
     cancelAnimationFrame(rafFlusso.current);
     const attendi = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+    // L'inclinazione e' una sola, spostata: o sta nella discesa o sta nella
+    // stretta. Averla in entrambe vorrebbe dire non cambiarla mai, e il
+    // cambio di punto di vista e' proprio la cosa che si vuole avere.
+    const pitchDiscesa = inclinazione === "discesa" ? dati.pitchArrivo : 0;
+    const pitchFuoco = inclinazione === "discesa" ? 0 : dati.pitchArrivo;
+
     setFase("preparazione");
     m.jumpTo({ center: dati.centro, zoom: START_ZOOM, pitch: 0, bearing: 0 });
     disegna(0, 0, 0);
@@ -424,7 +445,10 @@ export function useSequenza({
       center: dati.centro,
       fromZoom: START_ZOOM,
       toZoom: dati.zoomArrivo,
-      toPitch: dati.pitchArrivo,
+      // Il corridoio si precarica con l'inclinazione con cui lo si percorrera'
+      // davvero: a picco e in prospettiva servono tessere diverse, e caricare
+      // quelle sbagliate e' come non caricarne affatto.
+      toPitch: pitchDiscesa,
     });
     setPrefetchMs(rapporto.durationMs);
     await settle(m, 4000);
@@ -439,7 +463,7 @@ export function useSequenza({
     m.flyTo({
       center: dati.centro,
       zoom: dati.zoomArrivo,
-      pitch: dati.pitchArrivo,
+      pitch: pitchDiscesa,
       duration: 6000,
       essential: true,
     });
@@ -467,7 +491,7 @@ export function useSequenza({
     m.easeTo({
       center: dati.centroFuoco,
       zoom: dati.zoomFuoco,
-      pitch: 0,
+      pitch: pitchFuoco,
       bearing: 0,
       duration: 3000,
       essential: true,
@@ -485,7 +509,7 @@ export function useSequenza({
       rafFlusso.current = requestAnimationFrame(giro);
     };
     rafFlusso.current = requestAnimationFrame(giro);
-  }, [map, disegna, anima, dati]);
+  }, [map, disegna, anima, dati, inclinazione]);
 
   useEffect(() => {
     if (!automatica || avviata.current || !map) return;
