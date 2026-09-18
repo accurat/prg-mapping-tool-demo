@@ -13,6 +13,7 @@ const TESTS = [
   { id: "t9", title: "Leggibilita'", desc: "Dimensioni minime a dodici metri", ready: true },
   { id: "t10", title: "Sequenza completa", desc: "Discesa, colonne, appiattimento, rete a stella", ready: true },
   { id: "t11", title: "Le storie", desc: "Estratte dai dati veri, deterministiche, con la regia per la scena", ready: true },
+  { id: "t12", title: "I pannelli sul muro", desc: "Le zone del layout sopra la scena, e quanto costa comporle", ready: true },
 ];
 
 export default function Home() {

@@ -344,6 +344,77 @@ livello la si guardi.
 
 ---
 
+# Esiti di T12 — i pannelli sul muro
+
+`/t12`. Stessa sequenza di T10, stessi identici disegni: l'unica differenza sono le zone del
+documento dei layout sovrapposte e i dati veri sotto. La sequenza è stata **estratta** in
+`lib/scena/sequenza.ts` e le due pagine la condividono — duplicarla avrebbe prodotto due copie di
+settecento righe destinate a separarsi al primo ritocco, e una misura di T12 che non direbbe più
+niente su T10.
+
+## La rete vera è nazionale, non cittadina
+
+Misurato sulle 500 rotte:
+
+| | |
+| --- | --- |
+| Lunghezza mediana di una rotta | **1.136 km** |
+| Decile inferiore / superiore | 347 km / 2.994 km |
+| La più lunga | 6.196 km |
+| Destinazioni | 50, con una decina di rami ciascuna |
+| La stella più compatta | raggio 695 km |
+
+**La stella che T10 disegna — un hub con i suoi negozi a pochi chilometri — non esiste nei dati.**
+Quello che esiste è un centro di distribuzione rifornito da mezzo paese. A scala di città si
+vedrebbe un punto e delle linee che escono dall'inquadratura. La sequenza di T12 si svolge quindi
+a scala nazionale, e il momento in cui ci si stringe è su una stella, non su una città.
+
+## Il muro non può inquadrare gli Stati Uniti
+
+Conseguenza della geometria, non del codice. Il muro è largo cinque volte la propria altezza.
+Per far stare il paese in altezza servono circa 3.700 metri per pixel, e a quella scala i 5.760
+pixel di larghezza coprono **ventunmila chilometri**: metà pianeta. In proiezione a globo la
+curvatura si vede, ed è esattamente quello che compare a schermo.
+
+Le alternative sono tre e vanno decise guardandole: accettare che la vista nazionale mostri il
+globo — che è scenografico e onesto; inquadrare sulla larghezza, che taglia fuori metà del paese
+in altezza; oppure passare a proiezione piatta al livello nazionale, che T10 ha già escluso
+perché il passaggio fra sfera e piano si vede sempre.
+
+## Cosa è verificato
+
+**Leggibilità: 40 elementi di testo, quattro sole misure in uso — 36, 48, 72, 96 pixel — nessuna
+sotto la soglia.** Misurato nel documento, non stimato: la cornice vive dentro lo `Stage` e quindi
+in pixel di muro, che è la ragione per cui è stata scritta da capo invece di riusare il pannello
+di diagnosi, che vive in pixel di finestra.
+
+I contenuti sono agganciati ai momenti che la sequenza già aveva: titolo e data in apertura (M2),
+striscia di contesto da quando il rilievo emerge (M3), pannello del soggetto quando la scena si
+stringe (M4), grafico di approfondimento accanto alla scena durante il flusso (M9). Nessuna fase
+nuova.
+
+## Cosa non è ancora misurato
+
+**Il costo dei pannelli.** Il browser del pannello di anteprima scende a un fotogramma al secondo
+quando la finestra non è in primo piano, e `useRenderTrust` dichiara la misura non valida — che è
+il comportamento per cui è stato scritto. Una lettura presa mentre la pagina dipingeva davvero
+dava 59,9/s di mediana e 57,8/s di minimo con i pannelli accesi, uguale a T10 senza, ma **una
+lettura non è una misura** e non la si scrive nei risultati.
+
+La pagina ha tre interruttori, uno per sospetto, così la risposta non sarà un numero solo ma la
+quota di ciascuna causa:
+
+| Tasto | Cosa accende |
+| --- | --- |
+| `P` | i pannelli |
+| `B` | la sfocatura di fondo sulla striscia |
+| `N` | i numeri che si riscrivono a ogni fotogramma |
+
+Va eseguita con la finestra in primo piano, leggendo la mediana dopo qualche secondo per ciascuna
+combinazione, e nel momento della stretta — dove la camera si muove e l'overlay pure.
+
+---
+
 ## Cosa resta fuori, di proposito
 
 - La palette e l'illuminazione. Restano quelle di prova. Vale quanto detto in T9: è la cosa che
