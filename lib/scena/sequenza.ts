@@ -173,7 +173,20 @@ const LUCE = new LightingEffect({
   sun: new DirectionalLight({
     color: [255, 255, 255],
     intensity: 2.2,
-    direction: [-1, -2.4, -1.2],
+    /**
+     * La luce arriva da sud, cioe' **dalla parte della camera**.
+     *
+     * Con la luce da nord — il polo in alto sul globo — le facce che
+     * l'inquadratura inclinata mostra sono quelle rivolte a sud, e sono
+     * proprio quelle in ombra: le colonne si presentano tutte dal loro lato
+     * scuro. Il colore che dovrebbero dichiarare si legge male, e su una scala
+     * a due soli valori quel poco basta a confonderli.
+     *
+     * La componente verticale resta negativa — la luce scende comunque — ma di
+     * poco: una luce quasi radente lascia visibile la differenza fra le facce
+     * e non appiattisce i volumi come farebbe una luce a picco.
+     */
+    direction: [-1, 2.4, -0.7],
     _shadow: false,
   }),
 });

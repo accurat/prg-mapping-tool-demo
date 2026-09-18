@@ -842,6 +842,14 @@ l'altezza della colonna e i pannelli.
 Le dissolvenze della sequenza restano: l'opacità serve a far entrare e uscire le cose dalla scena,
 e quello è movimento, non valore.
 
+**La luce arriva da sud, cioè dalla parte della camera.** Con la luce da nord — il polo in alto sul
+globo — le facce che l'inquadratura inclinata mostra sono quelle rivolte a sud, ed erano proprio
+quelle in ombra: le colonne si presentavano tutte dal loro lato scuro. Con due soli colori quel
+poco basta a confonderli, perché un giallo in ombra e un blu in luce si somigliano più di quanto
+dovrebbero. La componente verticale resta negativa — la luce scende comunque — ma di poco: una
+luce quasi radente lascia visibile la differenza fra le facce e non appiattisce i volumi come
+farebbe una luce a picco.
+
 ---
 
 ## Cosa resta fuori, di proposito
