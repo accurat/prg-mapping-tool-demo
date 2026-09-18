@@ -28,9 +28,21 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { MapHandle } from "@/components/lab/MapSurface";
 import { prefetchDescent, settle, under } from "@/lib/lab/map";
 import type { Hub, Store } from "@/lib/lab/network";
+import { costruisciGlobo, type ArcoGlobo, type NodoGlobo } from "./globo";
 import type { DatiScena } from "./dati";
 
 export const START_ZOOM = 0.4;
+
+/**
+ * Lo zoom dell'apertura sul globo.
+ *
+ * Piu' alto di quello da cui parte il corridoio: a 0,4 il pianeta occupa un
+ * quarto dell'altezza del muro, che va bene per un fotogramma di passaggio e
+ * non per cinque secondi in cui il globo e' il soggetto. Qui riempie circa due
+ * terzi dell'altezza, che su una superficie larga cinque volte tanto e' quanto
+ * basta perche' sia un oggetto e non un puntino.
+ */
+export const ZOOM_GLOBO = 1.6;
 
 /**
  * I confini della parte continentale degli Stati Uniti.
@@ -62,6 +74,7 @@ export type Inclinazione = "discesa" | "fuoco";
 export type Fase =
   | "attesa"
   | "preparazione"
+  | "globo"
   | "discesa"
   | "paese"
   | "colonne"
@@ -87,6 +100,7 @@ export function nomeFase(fase: Fase, inclinazione: Inclinazione): string {
 export const NOMI_FASE: Record<Fase, string> = {
   attesa: "in attesa",
   preparazione: "precaricamento del corridoio",
+  globo: "il mondo si collega",
   discesa: "discesa dal globo",
   paese: "il paese intero",
   colonne: "il potenziale emerge",
@@ -181,6 +195,10 @@ export type Momento = {
   scalaHub?: number;
   /** Opacita' delle etichette degli hub, 0..1. Vivono solo sull'inquadratura del paese. */
   etichette?: number;
+  /** Opacita' della scena di apertura sul globo, 0..1. */
+  globo?: number;
+  /** Avanzamento del tracciamento dei collegamenti sul globo, 0..1. */
+  giroGlobo?: number;
 };
 
 export function useSequenza({
@@ -227,6 +245,7 @@ export function useSequenza({
   useEffect(() => () => cancelAnimationFrame(rafFlusso.current), []);
 
   const { hubs, stores } = dati;
+  const mondo = useMemo(() => costruisciGlobo(), []);
 
   /**
    * I collegamenti come percorsi campionati, non come archi.
@@ -383,6 +402,8 @@ export function useSequenza({
         svanire = 0,
         scalaHub = 1,
         etichette = 0,
+        globo = 0,
+        giroGlobo = 0,
       } = momento;
       opacitaEtichette.current = etichette;
       // L'hub ha una vita propria, dichiarata momento per momento: compare
@@ -523,6 +544,48 @@ export function useSequenza({
           ...under(labelId),
         }),
 
+        /**
+         * L'apertura sul globo.
+         *
+         * Nodi sui continenti e collegamenti che si tracciano uno alla volta,
+         * mentre il mondo gira. Spariscono prima della discesa: da li' in poi
+         * la scena parla di dati veri, e lasciare in campo degli ornamenti
+         * inventati vorrebbe dire non far capire piu' quali sono quali.
+         */
+        new ColumnLayer<NodoGlobo>({
+          id: "globo-nodi",
+          data: globo > 0.002 ? mondo.nodi : [],
+          diskResolution: 6,
+          radius: 190_000,
+          extruded: true,
+          getPosition: (n) => n.position,
+          // A questa scala un hub e' un'altra cosa per dimensione, non solo per
+          // colore: da qui non si legge una tinta, si legge un ingombro.
+          getElevation: (n) => (n.hub ? 520_000 : 170_000) * globo,
+          getFillColor: (n) => {
+            if (n.hub) return [80, 235, 200, 235 * globo];
+            const c = coloreValore(n.valore);
+            return [c[0], c[1], c[2], c[3] * globo];
+          },
+          updateTriggers: { getElevation: globo, getFillColor: globo },
+        }),
+
+        new TripsLayer<ArcoGlobo>({
+          id: "globo-archi",
+          data: globo > 0.002 ? mondo.archi : [],
+          getPath: (a) => a.path,
+          getTimestamps: (a) => a.timestamps,
+          getColor: (a) => {
+            const c = coloreValore(a.valore);
+            return [c[0], c[1], c[2], 220 * globo];
+          },
+          widthUnits: "pixels",
+          getWidth: 3,
+          trailLength: mondo.fine * 2,
+          currentTime: giroGlobo * mondo.fine,
+          updateTriggers: { getColor: globo },
+        }),
+
         new ScatterplotLayer<{ position: [number, number, number]; value: number; alpha: number }>({
           id: "carichi",
           data: carichi(flusso),
@@ -551,6 +614,7 @@ export function useSequenza({
       percorsiRidotti,
       finePercorsi,
       superstiti,
+      mondo,
       labelId,
       dati.fuoco,
       dati.altezzaDato,
@@ -631,7 +695,10 @@ export function useSequenza({
       // La sosta sul paese non cade nel corridoio, che e' una retta sul centro
       // di arrivo: va percorsa a parte o le sue tessere arriverebbero durante
       // il volo.
-      tappe: [{ ...vistaPaese, pitch: 0 }],
+      tappe: [
+        { center: [dati.centro[0] + 70, 22] as [number, number], zoom: ZOOM_GLOBO, pitch: 0 },
+        { ...vistaPaese, pitch: 0 },
+      ],
       fromZoom: START_ZOOM,
       toZoom: dati.zoomArrivo,
       // Il corridoio si precarica con l'inclinazione con cui lo si percorrera'
@@ -650,6 +717,47 @@ export function useSequenza({
     // passaggio da sfera a piano non si veda. L'unico modo per non farlo
     // vedere e' non farlo. Regge perche' la rete e' disegnata con percorsi e
     // non con archi: l'ArcLayer sotto vista sferica non viene disegnato.
+    /**
+     * L'apertura: il mondo che gira.
+     *
+     * La rotazione **porta il paese davanti** invece di fermarsi e lasciare il
+     * lavoro alla discesa: si parte da una longitudine lontana e si arriva a
+     * quella di destinazione, cosi' il volo non comincia con uno scarto
+     * laterale. La velocita' cala verso la fine — il globo si posa invece di
+     * inchiodare.
+     *
+     * Nel frattempo i collegamenti si tracciano uno alla volta, e i nodi
+     * compaiono con loro.
+     */
+    setFase("globo");
+    const GIRO = 70;
+    m.jumpTo({
+      center: [dati.centro[0] + GIRO, 22],
+      zoom: ZOOM_GLOBO,
+      pitch: 0,
+      bearing: 0,
+    });
+    await anima(
+      5000,
+      (_dolce, lineare) => {
+        // Non la curva addolcita: quella parte lenta, e un globo che parte
+        // lento sembra fermo. Questa parte alla sua velocita' e frena.
+        const avanzamento = 1 - (1 - lineare) ** 2;
+        m.jumpTo({
+          center: [dati.centro[0] + GIRO * (1 - avanzamento), 22 + (dati.centro[1] - 22) * avanzamento],
+          zoom: ZOOM_GLOBO,
+          pitch: 0,
+          bearing: 0,
+        });
+        disegna({
+          globo: Math.min(1, lineare / 0.12),
+          giroGlobo: Math.min(1, lineare / 0.85),
+        });
+      },
+      viva,
+    );
+    if (!viva()) return;
+
     setFase("discesa");
     m.flyTo({
       ...vistaPaese,
@@ -669,7 +777,15 @@ export function useSequenza({
     // posto, poi quello che ci succede dentro.
     await anima(
       2800,
-      (dolce) => disegna({ hub: dolce, scalaHub: dati.ingrandimentoHub }),
+      (dolce, lineare) =>
+        disegna({
+          hub: dolce,
+          scalaHub: dati.ingrandimentoHub,
+          // L'apertura se ne va nella prima meta' della discesa: da qui in poi
+          // in campo restano solo dati veri.
+          globo: Math.max(0, 1 - lineare / 0.5),
+          giroGlobo: 1,
+        }),
       viva,
     );
     await attendi(200);

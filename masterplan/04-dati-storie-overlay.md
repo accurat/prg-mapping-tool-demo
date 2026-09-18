@@ -448,6 +448,31 @@ video integrata.
 
 ---
 
+# L'apertura sul globo
+
+Prima della discesa c'è ora un momento in cui **il mondo gira**, con nodi sui continenti e
+collegamenti che si tracciano uno alla volta. Dura cinque secondi.
+
+La rotazione **porta il paese davanti** invece di fermarsi e lasciare il lavoro alla discesa: si
+parte da settanta gradi di longitudine più a est e si arriva esattamente a quella di
+destinazione, così il volo non comincia con uno scarto laterale. La velocità cala verso la fine —
+il globo si posa invece di inchiodare — e la curva non è quella addolcita usata altrove, perché
+quella parte lenta e un globo che parte lento sembra fermo.
+
+Lo zoom dell'apertura è più alto di quello da cui parte il corridoio: a 0,4 il pianeta occupa un
+quarto dell'altezza del muro, che va bene per un fotogramma di passaggio e non per cinque secondi
+in cui il globo è il soggetto.
+
+**I dati del globo sono decorativi, e non lo nascondono.** Le posizioni sono coordinate di città
+vere — servono a non piantare nodi in mezzo all'oceano, che si vedrebbe subito — ma i
+collegamenti fra loro sono inventati e non rappresentano niente. I percorsi seguono il grande
+cerchio: su una sfera, interpolare fra due coordinate come fossero punti su un foglio produce
+linee che passano dove non dovrebbero, e su tratte lunghe si vede. L'apertura svanisce nella
+prima metà della discesa: da lì in poi in campo restano solo dati veri, e lasciare degli ornamenti
+inventati vorrebbe dire non far più capire quali sono quali.
+
+---
+
 # La sosta sul paese
 
 La discesa non va più dal globo all'area in un volo solo: si ferma per un attimo su
