@@ -43,7 +43,6 @@ import {
 const WIDTH = 5760;
 const HEIGHT = 1080;
 const STYLE = "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json";
-const DATA = "18.09.2026";
 
 /**
  * Quanto dura ciascuna delle otto misure.
@@ -71,15 +70,18 @@ const NIENTE: Zone = { alta: false, sinistra: false, destra: false, striscia: fa
  * spiegarlo.
  */
 function zoneDi(fase: Fase, inclinazione: Inclinazione): Zone {
-  // M2: titolo e data solo in apertura.
-  if (fase === "attesa") return NIENTE;
-  if (fase === "preparazione" || fase === "globo" || fase === "discesa" || fase === "paese") {
-    return { ...NIENTE, alta: true };
-  }
+  if (fase === "attesa" || fase === "preparazione" || fase === "globo") return NIENTE;
 
-  // M3: la striscia di contesto compare quando il territorio si popola, e da
-  // li' non se ne va piu'.
+  /**
+   * La striscia di contesto compare **durante la discesa sul paese**, non dopo.
+   *
+   * Arriva mentre la camera si sta ancora muovendo, cosi' quando il volo si
+   * ferma la sala ha gia' sotto gli occhi di che perimetro si parla. Farla
+   * comparire a movimento finito aggiungerebbe un'apparizione dopo una sosta,
+   * cioe' due eventi dove ne basta uno.
+   */
   const conStriscia: Zone = { ...NIENTE, striscia: true };
+  if (fase === "discesa" || fase === "paese") return conStriscia;
 
   if (inclinazione === "fuoco") {
     // M4 e M9 insieme, alla fine: i numeri dell'area e il grafico di
@@ -363,6 +365,33 @@ function Scena({
 
   const visibili = zoneDi(fase, inclinazione);
 
+  /**
+   * La striscia parla del perimetro corrente.
+   *
+   * Finche' si guarda il paese dice i totali del paese; quando la scena si
+   * stringe passa a quelli dell'area. E' quello che chiede il documento dei
+   * layout (M3 poi M4), ed e' anche l'unica versione onesta: annunciare
+   * «Dallas» mentre la camera sta ancora scendendo sull'intero territorio
+   * vorrebbe dire dare per visto qualcosa che non si e' ancora visto.
+   */
+  const suUnArea =
+    fase === "fuoco" || fase === "flusso" || fase === "rilievo" || fase === "numeri";
+  const vociStriscia = suUnArea
+    ? [
+        luogo,
+        `${conta(sintesi.negozi)} negozi collegati`,
+        valuta(sintesi.potenziale),
+        `${percentuale(sintesi.crescita ?? 0, { segno: true })} possibile`,
+        `paese ${percentuale(nazionale.crescita ?? 0, { segno: true })}`,
+      ]
+    : [
+        "Stati Uniti",
+        `${conta(nazionale.misurabili)} negozi con vendite`,
+        `${conta(scena.stores.length)} rotte di rifornimento`,
+        valuta(nazionale.potenziale),
+        `${percentuale(nazionale.crescita ?? 0, { segno: true })} possibile`,
+      ];
+
   return (
     <main className="h-screen w-screen overflow-hidden bg-black">
       <Stage width={WIDTH} height={HEIGHT}>
@@ -386,11 +415,6 @@ function Scena({
             altezza={HEIGHT}
             visibili={pannelli ? visibili : NIENTE}
             zone={{
-              alta: (
-                <div style={{ fontSize: TIPI.titolo, letterSpacing: "0.12em" }}>
-                  P&amp;G MAPPING TOOL <span style={{ color: COLORI.smorzato }}>·</span> {DATA}
-                </div>
-              ),
               sinistra: (
                 <Pannello titolo="rete di rifornimento" sfocato={sfocatura}>
                   <div style={{ fontSize: TIPI.titolo, lineHeight: 1.05 }}>{luogo}</div>
@@ -423,23 +447,9 @@ function Scena({
                   </div>
                 </Pannello>
               ),
-              striscia: (
-                <Striscia
-                  // La sfocatura e' sotto misura, e riguarda tutte le zone
-                  // insieme: striscia e pannelli. Sfoca **cio' che sta
-                  // dietro**, che e' l'unica cosa che avrebbe senso sfocare —
-                  // un rettangolo sovrapposto alla cornice, come nel primo
-                  // tentativo, sfocava invece il testo.
-                  sfocata={sfocatura}
-                  voci={[
-                    luogo,
-                    `${conta(sintesi.negozi)} negozi collegati`,
-                    valuta(sintesi.potenziale),
-                    `${percentuale(sintesi.crescita ?? 0, { segno: true })} possibile`,
-                    `paese ${percentuale(nazionale.crescita ?? 0, { segno: true })}`,
-                  ]}
-                />
-              ),
+              // La sfocatura riguarda tutte le zone insieme: sfoca cio' che
+              // sta dietro, che e' l'unica cosa che avrebbe senso sfocare.
+              striscia: <Striscia sfocata={sfocatura} voci={vociStriscia} />,
             }}
           />
         </div>

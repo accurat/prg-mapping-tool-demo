@@ -905,8 +905,8 @@ export function useSequenza({
     // La sosta. Senza, il paese sarebbe solo un fotogramma di passaggio e
     // nessuno in sala avrebbe il tempo di capire dove si sta andando.
     setFase("paese");
-    await anima(500, (dolce) => disegna({ hub: 1, etichette: dolce }), viva);
-    await attendi(700);
+    await anima(400, (dolce) => disegna({ hub: 1, etichette: dolce }), viva);
+    await attendi(450);
     if (!viva()) return;
 
     if (!unVoloSolo) {
