@@ -393,48 +393,58 @@ striscia di contesto da quando il rilievo emerge (M3), pannello del soggetto qua
 stringe (M4), grafico di approfondimento accanto alla scena durante il flusso (M9). Nessuna fase
 nuova.
 
-## Il costo dei pannelli — misura parziale
+## Il costo dei pannelli
 
-Presa con la pagina che disegnava davvero, `misura attendibile: sì`, finestre da cinque secondi,
-**nel momento a camera ferma** (il flusso in corso, l'inquadratura immobile):
+Eseguita in una **finestra vera di Chrome**, avviata con lo strozzamento delle finestre in
+secondo piano disattivato. Otto misure da cinque secondi, 301 fotogrammi ciascuna, zero
+fotogrammi non assestati, tutte valide. Dati grezzi in `masterplan/results/serie-8.jsonl.bak`.
 
-| | mediana | p95 | peggior fotogramma |
+### Con il vsync: nessuna configurazione esce dal budget
+
+| | camera ferma | camera in movimento |
+| --- | --- | --- |
+| scena sola | 59,9/s — peggiore 17,7 ms | 59,9/s — peggiore 17,7 ms |
+| con i pannelli | 59,9/s — peggiore 17,7 ms | 59,9/s — peggiore 17,7 ms |
+| + sfocatura di fondo | 59,9/s — peggiore 17,7 ms | 59,9/s — peggiore 17,6 ms |
+| + numeri vivi | 59,9/s — peggiore 17,8 ms | 59,9/s — peggiore 17,7 ms |
+
+Otto righe identiche. **Questa tabella non dice che i pannelli sono gratis: dice che nessuna
+configurazione esce dai 16,7 millisecondi.** Con il vsync la mediana è inchiodata alla frequenza
+dello schermo e non può peggiorare finché c'è margine, quindi una misura fatta così non
+distingue fra «costa poco» e «non costa niente». Per separarli serve toglierlo.
+
+### Senza vsync: quanto costa davvero
+
+| | camera ferma | in movimento | costo per fotogramma |
 | --- | --- | --- | --- |
-| scena sola | 59,9/s | 16,7 ms | 17,5 ms |
-| con i pannelli | 59,9/s | 16,8 ms | 17,4 ms |
-| + sfocatura di fondo | 59,9/s | 16,8 ms | **100,1 ms** |
-| + numeri vivi | 59,9/s | 16,8 ms | 17,7 ms |
+| scena sola | 2,80 ms | 3,10 ms | — |
+| con i pannelli | 2,70 ms | 3,10 ms | **0,0 ms** |
+| + sfocatura di fondo | 2,60 ms | 3,10 ms | **0,0 ms** |
+| + numeri vivi | 2,90 ms | 3,20 ms | **+0,1 ms** |
 
-**I pannelli non costano niente.** Né il testo, né i grafici in SVG, né i numeri riscritti a ogni
-fotogramma: mediana e p95 identici alla scena da sola, entro il rumore di misura. A schermo fermo
-un pannello è un rettangolo già composto, e il browser lo ricompone senza ridisegnarlo.
+**I pannelli non costano niente di misurabile**, né fermi né mentre la camera si muove: le
+differenze sono di un decimo di millisecondo e cambiano segno fra una configurazione e l'altra,
+cioè sono rumore. Testo, grafici in SVG e cornice si compongono una volta e il browser li
+ricicla.
 
-**La sfocatura di fondo costa un intoppo da 100 millisecondi**, cioè sei fotogrammi persi in un
-colpo solo — e lo fa senza spostare né la mediana né il p95, quindi una misura che guardasse solo
-la mediana l'avrebbe dichiarata gratis. È il momento in cui il browser costruisce il livello di
-composizione per la sfocatura. In sala si vedrebbe come uno scatto, non come una lentezza.
-Conferma la regola già adottata nella cornice: **niente `backdrop-filter` sopra il canvas**.
+L'unica voce con un costo costante, in entrambe le condizioni, sono i **numeri che si riscrivono
+a ogni fotogramma: +0,1 ms**, cioè lo 0,6% del budget. È reale ma trascurabile: se i numeri
+devono salire, possono salire.
 
-### Quello che manca
+**La sfocatura non si conferma.** Una misura precedente, presa nel pannello incorporato dell'app,
+aveva mostrato un intoppo da 100 millisecondi al primo disegno della sfocatura. In una finestra
+vera non si riproduce. Teneva la regola per il motivo sbagliato: la regola resta — niente
+`backdrop-filter` — ma perché **non serve a niente**, non perché costi.
 
-La stessa tabella **a camera in movimento**, che è il caso che preoccupa davvero: quando la
-stretta finale muove l'inquadratura, l'overlay si muove con lei e il browser deve ricomporre a
-ogni fotogramma invece di riusare quello di prima. Lì un pannello potrebbe non essere più gratis.
+### Il margine
 
-La prova ora misura anche quel caso — ogni configurazione due volte, ferma e con una rotazione
-lenta identica per tutte, così le righe restano confrontabili — ma **non è eseguibile da un
-agente**: il browser scende a un fotogramma al secondo appena la finestra passa dietro, e le
-otto misure durano più di quanto si riesca a tenerlo sveglio dall'esterno. La pagina se ne accorge
-da sola e dichiara le righe non valide invece di consegnare numeri inventati.
+Il numero più utile della prova non è nella tabella: la scena intera, cinquecento rotte,
+cinquantamila chilometri di archi, i carichi in movimento, i pannelli e i grafici, **costa 3,1
+millisecondi per fotogramma su un budget di 16,7**. Un margine di cinque volte.
 
-Si esegue così, con la finestra in primo piano per circa un minuto e mezzo:
-
-```
-http://localhost:3000/t12?prova=1
-```
-
-Parte da sola quando la scena è a regime e scrive il risultato in `masterplan/results/runs.jsonl`.
-Nessun tasto da premere, nessun numero da trascrivere.
+Va detto con la solita cautela: è la mia macchina, non quella della sala. Resta la domanda aperta
+su che cosa piloti il muro, e questo margine è esattamente ciò che verrà mangiato da una scheda
+video integrata.
 
 ---
 
