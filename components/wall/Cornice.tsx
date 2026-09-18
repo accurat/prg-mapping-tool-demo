@@ -110,11 +110,21 @@ function assoluto(x: number, y: number, w: number, h: number): CSSProperties {
 }
 
 /** La scatola di un pannello laterale. */
-export function Pannello({ titolo, children }: { titolo?: string; children: ReactNode }) {
+export function Pannello({
+  titolo,
+  sfocato = false,
+  children,
+}: {
+  titolo?: string;
+  /** Fondo sfocato invece che pieno: vedi la nota sulla striscia. */
+  sfocato?: boolean;
+  children: ReactNode;
+}) {
   return (
     <div
       style={{
-        background: COLORI.fondo,
+        background: sfocato ? "rgba(8, 10, 14, 0.42)" : COLORI.fondo,
+        backdropFilter: sfocato ? "blur(14px)" : undefined,
         border: `2px solid ${COLORI.bordo}`,
         borderRadius: 12,
         padding: SPAZI.interno,
@@ -188,9 +198,11 @@ export function Striscia({ voci, sfocata = false }: { voci: string[]; sfocata?: 
         alignItems: "center",
         justifyContent: "center",
         gap: SPAZI.interno,
-        // Con la sfocatura il fondo si alleggerisce: altrimenti sfocherebbe
-        // qualcosa che non si vede comunque, che e' il modo piu' rapido di
-        // pagare un effetto senza ottenerlo.
+        // Con la sfocatura il fondo si alleggerisce: sfocare dietro a un
+        // pannello quasi opaco vorrebbe dire pagare l'effetto senza ottenerlo.
+        // La sfocatura riguarda **cio' che sta dietro**, mai il contenuto: un
+        // rettangolo sfocato sovrapposto alla cornice sfoca il testo, che e'
+        // l'unica cosa che non deve succedere.
         background: sfocata ? "rgba(8, 10, 14, 0.42)" : COLORI.fondo,
         backdropFilter: sfocata ? "blur(14px)" : undefined,
         borderTop: `2px solid ${COLORI.bordo}`,

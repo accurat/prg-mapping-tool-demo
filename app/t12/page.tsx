@@ -346,7 +346,7 @@ function Scena({
                 </div>
               ),
               sinistra: (
-                <Pannello titolo="rete di rifornimento">
+                <Pannello titolo="rete di rifornimento" sfocato={sfocatura}>
                   <div style={{ fontSize: TIPI.titolo, lineHeight: 1.05 }}>{luogo}</div>
                   <div style={{ height: 24 }} />
                   <Riga
@@ -369,7 +369,7 @@ function Scena({
                 </Pannello>
               ),
               destra: (
-                <Pannello titolo="profilo shopper">
+                <Pannello titolo="profilo shopper" sfocato={sfocatura}>
                   <Barre voci={voci} larghezza={1792 - 80} />
                   <div style={{ fontSize: TIPI.minimo, color: COLORI.smorzato, marginTop: 16 }}>
                     barra: la selezione <span style={{ color: COLORI.bordo }}>·</span> tacca: media
@@ -379,11 +379,11 @@ function Scena({
               ),
               striscia: (
                 <Striscia
-                  // La sfocatura e' sotto misura: sfoca **la mappa dietro la
-                  // striscia**, che e' l'unica cosa che avrebbe senso sfocare.
-                  // Un rettangolo sovrapposto alla cornice, come nel primo
-                  // tentativo, sfoca invece il testo della striscia: misura
-                  // un'operazione che nessuno vorrebbe mai.
+                  // La sfocatura e' sotto misura, e riguarda tutte le zone
+                  // insieme: striscia e pannelli. Sfoca **cio' che sta
+                  // dietro**, che e' l'unica cosa che avrebbe senso sfocare —
+                  // un rettangolo sovrapposto alla cornice, come nel primo
+                  // tentativo, sfocava invece il testo.
                   sfocata={sfocatura}
                   voci={[
                     luogo,

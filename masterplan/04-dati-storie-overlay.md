@@ -447,8 +447,10 @@ devono salire, possono salire.
 
 **La sfocatura: attenzione a cosa si misurava.** Nella prima versione il rettangolo sfocato era
 sovrapposto alla cornice, quindi sfocava **il testo della striscia** invece della mappa dietro di
-essa — un'operazione che nessuno vorrebbe mai. Ora la sfocatura è del fondo della striscia, che è
-l'unica cosa che avrebbe senso sfocare. L'area coinvolta è identica, quindi il costo misurato
+essa — un'operazione che nessuno vorrebbe mai. Ora la sfocatura è del fondo della striscia **e dei
+pannelli**, cioè di ciò che sta dietro — l'unica cosa che avrebbe senso sfocare. Dove è accesa il
+fondo si alleggerisce, da nero all'82% a nero al 42%: sfocare dietro a un pannello quasi opaco
+vorrebbe dire pagare l'effetto senza ottenerlo. L'area coinvolta è identica, quindi il costo misurato
 resta indicativo, ma il prossimo giro della prova misura la cosa giusta.
 
 **L'intoppo da 100 ms non si conferma.** Una misura precedente, presa nel pannello incorporato dell'app,
