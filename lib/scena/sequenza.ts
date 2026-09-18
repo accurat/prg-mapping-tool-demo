@@ -511,11 +511,30 @@ export function useSequenza({
 
         new TripsLayer<Percorso>({
           id: "rete",
-          // Una rete del tutto trasparente continuerebbe a scrivere nel buffer
-          // di profondita' e a nascondere le colonne che le passano davanti:
-          // a dissolvenza conclusa i percorsi vanno tolti dai dati, non solo
-          // resi invisibili.
-          data: svanire >= 0.999 ? [] : percorsiAttivi,
+          /**
+           * I percorsi si tolgono dai dati ai due estremi, non si rendono
+           * invisibili.
+           *
+           * In coda perche' una rete del tutto trasparente continuerebbe a
+           * scrivere nel buffer di profondita' e a nascondere le colonne che le
+           * passano davanti.
+           *
+           * In testa per una ragione meno ovvia, che e' costata un'indagine.
+           * TripsLayer decide se disegnare un punto dalla quantita'
+           * `(istante - suo tempo) / lunghezza della scia`, e la scarta se
+           * risulta negativa. Qui la scia e' lunga quanto tutta la sequenza —
+           * serve a non far svanire mai i collegamenti gia' tracciati — quindi
+           * a istante zero quella quantita' vale qualche decimillesimo sotto lo
+           * zero: dentro l'errore del calcolo a virgola mobile. Alcuni
+           * frammenti finiscono dalla parte sbagliata dello zero e vengono
+           * disegnati **a piena opacita'**, molto prima del momento in cui la
+           * rete dovrebbe accendersi.
+           *
+           * Si vedeva come una manciata di mezzi archi azzurri fermi sulla
+           * mappa fin dalla discesa, e a leggere il codice sembravano
+           * impossibili: il valore che li governa era zero.
+           */
+          data: rete <= 0.002 || svanire >= 0.999 ? [] : percorsiAttivi,
           getPath: (p) => p.path,
           getTimestamps: (p) => p.timestamps,
           getColor: (p) => {
@@ -524,8 +543,11 @@ export function useSequenza({
           },
           widthUnits: "pixels",
           getWidth: 6,
-          // La scia non svanisce mai: serve un disegno progressivo, non una cometa.
-          trailLength: finePercorsi * 2,
+          // La scia dura quanto l'intera sequenza: serve un disegno
+          // progressivo, non una cometa. Appena il minimo necessario, pero':
+          // allungarla oltre non cambia niente di visibile e peggiora la
+          // precisione del confronto che decide cosa disegnare.
+          trailLength: finePercorsi * 1.05,
           currentTime: rete * finePercorsi,
           updateTriggers: { getColor: [stretta, svanire] },
           ...under(labelId),
@@ -607,7 +629,25 @@ export function useSequenza({
         }),
       ];
 
-      overlay.setProps({ layers: strati, effects: [LUCE] });
+      /**
+       * Spegnimento selettivo con `?senza=id,id`.
+       *
+       * Serve a rispondere alla domanda «che cos'e' quella cosa a schermo»
+       * senza doverla dedurre: si toglie uno strato per volta e si guarda cosa
+       * sparisce. E' costato un giro di ipotesi sbagliate scoprire che
+       * mancava.
+       */
+      const spenti =
+        typeof window === "undefined"
+          ? []
+          : (new URLSearchParams(window.location.search).get("senza") ?? "")
+              .split(",")
+              .filter(Boolean);
+
+      overlay.setProps({
+        layers: spenti.length ? strati.filter((l) => !spenti.includes(String(l.id))) : strati,
+        effects: [LUCE],
+      });
     },
     [
       stores,

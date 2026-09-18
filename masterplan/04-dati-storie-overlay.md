@@ -618,6 +618,38 @@ tasto `R` che c'è da sempre.
 
 ---
 
+# Un difetto che il codice dichiarava impossibile
+
+Sintomo: una manciata di **mezzi archi azzurri fermi sulla mappa**, presenti fin dalla discesa,
+molto prima del momento in cui la rete si accende. A leggere il codice erano impossibili — il
+valore che governa la rete era zero.
+
+`TripsLayer` decide se disegnare un punto dalla quantità `(istante − suo tempo) / lunghezza della
+scia`, e lo scarta se risulta negativa. La scia qui è lunga quanto tutta la sequenza, perché serve
+che i collegamenti già tracciati **non svaniscano mai**. A istante zero quella quantità vale
+quindi qualche decimillesimo sotto lo zero: dentro l'errore del calcolo a virgola mobile. Alcuni
+frammenti finiscono dalla parte sbagliata dello zero e vengono disegnati **a piena opacità**.
+
+Erano i collegamenti più corti — quelli che partono per primi — ed è il motivo per cui si vedevano
+come archi a metà e non come una rete.
+
+Due correzioni: i percorsi si tolgono dai dati finché la rete non deve accendersi, come già si
+faceva all'altro estremo quando si spegne; e la scia si accorcia al minimo necessario, perché
+allungarla oltre non cambia niente di visibile e peggiora la precisione del confronto.
+
+## Lo spegnimento selettivo degli strati
+
+Da questa indagine è nato `?senza=id,id`, che toglie uno strato per volta dalla scena. Serve a
+rispondere alla domanda «che cos'è quella cosa a schermo» guardando cosa sparisce, invece di
+dedurlo dal codice — che in questo caso avrebbe risposto, con sicurezza, che quella cosa non
+esisteva.
+
+Nota di metodo emersa insieme: **il pannello di anteprima esaurisce i contesti WebGL** dopo una
+manciata di ricariche, e da quel momento la mappa non carica più e la pagina resta «in attesa»
+senza errori parlanti. Non è un difetto del codice: si apre una scheda nuova.
+
+---
+
 ## Cosa resta fuori, di proposito
 
 - La palette e l'illuminazione. Restano quelle di prova. Vale quanto detto in T9: è la cosa che
