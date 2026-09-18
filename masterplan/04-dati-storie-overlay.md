@@ -393,25 +393,48 @@ striscia di contesto da quando il rilievo emerge (M3), pannello del soggetto qua
 stringe (M4), grafico di approfondimento accanto alla scena durante il flusso (M9). Nessuna fase
 nuova.
 
-## Cosa non è ancora misurato
+## Il costo dei pannelli — misura parziale
 
-**Il costo dei pannelli.** Il browser del pannello di anteprima scende a un fotogramma al secondo
-quando la finestra non è in primo piano, e `useRenderTrust` dichiara la misura non valida — che è
-il comportamento per cui è stato scritto. Una lettura presa mentre la pagina dipingeva davvero
-dava 59,9/s di mediana e 57,8/s di minimo con i pannelli accesi, uguale a T10 senza, ma **una
-lettura non è una misura** e non la si scrive nei risultati.
+Presa con la pagina che disegnava davvero, `misura attendibile: sì`, finestre da cinque secondi,
+**nel momento a camera ferma** (il flusso in corso, l'inquadratura immobile):
 
-La pagina ha tre interruttori, uno per sospetto, così la risposta non sarà un numero solo ma la
-quota di ciascuna causa:
+| | mediana | p95 | peggior fotogramma |
+| --- | --- | --- | --- |
+| scena sola | 59,9/s | 16,7 ms | 17,5 ms |
+| con i pannelli | 59,9/s | 16,8 ms | 17,4 ms |
+| + sfocatura di fondo | 59,9/s | 16,8 ms | **100,1 ms** |
+| + numeri vivi | 59,9/s | 16,8 ms | 17,7 ms |
 
-| Tasto | Cosa accende |
-| --- | --- |
-| `P` | i pannelli |
-| `B` | la sfocatura di fondo sulla striscia |
-| `N` | i numeri che si riscrivono a ogni fotogramma |
+**I pannelli non costano niente.** Né il testo, né i grafici in SVG, né i numeri riscritti a ogni
+fotogramma: mediana e p95 identici alla scena da sola, entro il rumore di misura. A schermo fermo
+un pannello è un rettangolo già composto, e il browser lo ricompone senza ridisegnarlo.
 
-Va eseguita con la finestra in primo piano, leggendo la mediana dopo qualche secondo per ciascuna
-combinazione, e nel momento della stretta — dove la camera si muove e l'overlay pure.
+**La sfocatura di fondo costa un intoppo da 100 millisecondi**, cioè sei fotogrammi persi in un
+colpo solo — e lo fa senza spostare né la mediana né il p95, quindi una misura che guardasse solo
+la mediana l'avrebbe dichiarata gratis. È il momento in cui il browser costruisce il livello di
+composizione per la sfocatura. In sala si vedrebbe come uno scatto, non come una lentezza.
+Conferma la regola già adottata nella cornice: **niente `backdrop-filter` sopra il canvas**.
+
+### Quello che manca
+
+La stessa tabella **a camera in movimento**, che è il caso che preoccupa davvero: quando la
+stretta finale muove l'inquadratura, l'overlay si muove con lei e il browser deve ricomporre a
+ogni fotogramma invece di riusare quello di prima. Lì un pannello potrebbe non essere più gratis.
+
+La prova ora misura anche quel caso — ogni configurazione due volte, ferma e con una rotazione
+lenta identica per tutte, così le righe restano confrontabili — ma **non è eseguibile da un
+agente**: il browser scende a un fotogramma al secondo appena la finestra passa dietro, e le
+otto misure durano più di quanto si riesca a tenerlo sveglio dall'esterno. La pagina se ne accorge
+da sola e dichiara le righe non valide invece di consegnare numeri inventati.
+
+Si esegue così, con la finestra in primo piano per circa un minuto e mezzo:
+
+```
+http://localhost:3000/t12?prova=1
+```
+
+Parte da sola quando la scena è a regime e scrive il risultato in `masterplan/results/runs.jsonl`.
+Nessun tasto da premere, nessun numero da trascrivere.
 
 ---
 
