@@ -31,14 +31,14 @@ function ammissibili(ctx: Contesto): Unita[] {
 /** I numeri che accompagnano sempre una storia d'area. */
 function numeriDiBase(u: Unita): Numero[] {
   return [
-    { etichetta: "potenziale inespresso", valore: valuta(u.sintesi.potenziale), principale: true },
+    { etichetta: "unrealised potential", valore: valuta(u.sintesi.potenziale), principale: true },
     {
-      etichetta: "crescita possibile",
+      etichetta: "possible growth",
       valore: u.sintesi.crescita === null ? "—" : percentuale(u.sintesi.crescita, { segno: true }),
       principale: true,
     },
-    { etichetta: "negozi", valore: conta(u.sintesi.negozi) },
-    { etichetta: "sotto il riferimento", valore: `${u.sintesi.sotto} su ${u.sintesi.misurabili}` },
+    { etichetta: "stores", valore: conta(u.sintesi.negozi) },
+    { etichetta: "below the reference", valore: `${u.sintesi.sotto} of ${u.sintesi.misurabili}` },
   ];
 }
 
@@ -77,7 +77,7 @@ function perConcorrenti(ctx: Contesto, verso: "pochi" | "molti"): Candidata[] {
       numeri: [
         ...numeriDiBase(u),
         {
-          etichetta: "concorrenti vs mediana",
+          etichetta: "competitors vs median",
           valore: percentuale(scarto, { segno: true }),
           principale: true,
         },
@@ -124,18 +124,18 @@ function annoPerduto(ctx: Contesto): Candidata[] {
       anomalia: limita((caloMarcato - scarto) / 0.25) * 0.7 + limita(diffusione) * 0.3,
       numeri: [
         {
-          etichetta: "vs anno precedente",
+          etichetta: "vs last year",
           valore: percentuale(media, { segno: true, decimali: 1 }),
           principale: true,
         },
         {
-          etichetta: "vs il paese",
+          etichetta: "vs the country",
           valore: percentuale(scarto, { segno: true, decimali: 1 }),
           principale: true,
         },
         {
-          etichetta: "negozi peggio del paese",
-          valore: `${peggio} su ${misurati}`,
+          etichetta: "stores below the country",
+          valore: `${peggio} of ${misurati}`,
           principale: true,
         },
         ...numeriDiBase(u),
@@ -143,7 +143,7 @@ function annoPerduto(ctx: Contesto): Candidata[] {
       frase: {
         calo: percentuale(media, { segno: true, decimali: 1 }),
         scarto: percentuale(scarto, { segno: true, decimali: 1 }),
-        diffusione: `${peggio} su ${misurati}`,
+        diffusione: `${peggio} of ${misurati}`,
       },
     });
   }
@@ -176,21 +176,21 @@ function anomalieModello(ctx: Contesto): Candidata[] {
         anomalia: limita((quota / attesa - soglia) / soglia / 2 + 0.3),
         numeri: [
           {
-            etichetta: tipo === "Overachieving" ? "sopra il modello" : "sotto il modello",
-            valore: `${quanti} su ${u.indici.length}`,
+            etichetta: tipo === "Overachieving" ? "above the model" : "below the model",
+            valore: `${quanti} of ${u.indici.length}`,
             principale: true,
           },
           {
-            etichetta: "quota vs nazionale",
+            etichetta: "share vs national",
             valore: `${(quota / attesa).toFixed(1)}x`,
             principale: true,
           },
           ...numeriDiBase(u),
         ],
         frase: {
-          verso: tipo === "Overachieving" ? "sopra" : "sotto",
-          quanti: `${quanti} su ${u.indici.length}`,
-          volte: `${(quota / attesa).toFixed(1)} volte`,
+          verso: tipo === "Overachieving" ? "above" : "below",
+          quanti: `${quanti} of ${u.indici.length}`,
+          volte: `${(quota / attesa).toFixed(1)}x`,
         },
       });
     }
@@ -221,12 +221,12 @@ function pubblicoCheNonTorna(ctx: Contesto): Candidata[] {
       anomalia: limita((distanza - soglia) / soglia) * 0.5 + limita(mancanza) * 0.5,
       numeri: [
         {
-          etichetta: "bacino diverso dalla media",
+          etichetta: "catchment vs national profile",
           valore: percentuale(distanza, { decimali: 1 }),
           principale: true,
         },
         {
-          etichetta: "quota vs nazionale",
+          etichetta: "share vs national",
           valore: percentuale(-mancanza, { segno: true }),
           principale: true,
         },
@@ -278,9 +278,9 @@ function gemelliDivergenti(ctx: Contesto): Candidata[] {
         aree: [debole, forte],
         anomalia: limita(divergenza) * 0.6 + limita(1 - distanza / demografiaGemella) * 0.4,
         numeri: [
-          { etichetta: "differenza di quota", valore: percentuale(divergenza), principale: true },
+          { etichetta: "share gap", valore: percentuale(divergenza), principale: true },
           {
-            etichetta: "differenza di pubblico",
+            etichetta: "audience gap",
             valore: percentuale(distanza, { decimali: 1 }),
             principale: true,
           },
@@ -338,17 +338,17 @@ function concentrazione(ctx: Contesto): Candidata[] {
       aree: scelte,
       anomalia: limita(1 - quotaAree / 0.5),
       numeri: [
-        { etichetta: "aree", valore: `${quante} stati su ${aree.length}`, principale: true },
+        { etichetta: "areas", valore: `${quante} states of ${aree.length}`, principale: true },
         {
-          etichetta: "quota del potenziale",
+          etichetta: "share of the potential",
           valore: percentuale(cumulato / totale),
           principale: true,
         },
-        { etichetta: "valore", valore: valuta(cumulato) },
-        { etichetta: "negozi", valore: conta(scelte.reduce((s, u) => s + u.sintesi.negozi, 0)) },
+        { etichetta: "value", valore: valuta(cumulato) },
+        { etichetta: "stores", valore: conta(scelte.reduce((s, u) => s + u.sintesi.negozi, 0)) },
       ],
       frase: {
-        quante: `${quante} stati`,
+        quante: `${quante} states`,
         quota: percentuale(cumulato / totale),
         valore: valuta(cumulato),
       },

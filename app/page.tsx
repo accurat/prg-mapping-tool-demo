@@ -1,27 +1,27 @@
 import Link from "next/link";
 
 const TESTS = [
-  { id: "t0", title: "Impianto", desc: "Canvas a 5760x1080, contatore fotogrammi, costo della sola superficie", ready: true },
-  { id: "t1", title: "La discesa su una citta'", desc: "MapLibre, dal globo alla scala stradale", ready: true },
-  { id: "t2", title: "Il costo della mappa base", desc: "Stili, terreno, edifici, misurati separatamente", ready: false },
-  { id: "t3", title: "deck.gl sopra MapLibre", desc: "Sovrapposto contro interlacciato", ready: true },
-  { id: "t4", title: "Colonne esagonali", desc: "Il rilievo: celle, aggregazione, transizioni, ombre", ready: true },
-  { id: "t5", title: "Archi negozio - hub", desc: "Quantita' e animazione", ready: true },
-  { id: "t6", title: "Punti e selezione", desc: "27.000 punti, con e senza rilevamento del tocco", ready: true },
-  { id: "t7", title: "Interazioni", desc: "Gesti, volo, trascinamento con selezione continua", ready: true },
-  { id: "t8", title: "Tre schermi", desc: "Un canvas da 5760 contro tre da 1920", ready: false },
-  { id: "t9", title: "Leggibilita'", desc: "Dimensioni minime a dodici metri", ready: true },
-  { id: "t10", title: "Sequenza completa", desc: "Confluita in T12: stessa sequenza, dati veri", ready: false },
-  { id: "t11", title: "Le storie", desc: "Estratte dai dati veri, deterministiche, con la regia per la scena", ready: true },
-  { id: "t12", title: "La scena", desc: "Globo, discesa, rilievo, rete, pannelli. Dati veri, e quanto costa comporli", ready: true },
+  { id: "t0", title: "The rig", desc: "A 5760x1080 canvas, a frame counter, the cost of the surface alone", ready: true },
+  { id: "t1", title: "Descent onto a city", desc: "MapLibre, from the globe to street scale", ready: true },
+  { id: "t2", title: "The cost of the basemap", desc: "Styles, terrain, buildings, measured separately", ready: false },
+  { id: "t3", title: "deck.gl over MapLibre", desc: "Overlaid against interleaved", ready: true },
+  { id: "t4", title: "Hexagonal columns", desc: "The relief: cells, aggregation, transitions, shadows", ready: true },
+  { id: "t5", title: "Store-to-hub arcs", desc: "Quantity and animation", ready: true },
+  { id: "t6", title: "Points and selection", desc: "27,000 points, with and without hit testing", ready: true },
+  { id: "t7", title: "Interactions", desc: "Gestures, flight, dragging with continuous selection", ready: true },
+  { id: "t8", title: "Three screens", desc: "One 5760 canvas against three of 1920", ready: false },
+  { id: "t9", title: "Legibility", desc: "Minimum sizes at twelve metres", ready: true },
+  { id: "t10", title: "Full sequence", desc: "Merged into T12: same sequence, real data", ready: false },
+  { id: "t11", title: "The stories", desc: "Drawn from the real data, deterministic, each with its staging", ready: true },
+  { id: "t12", title: "The scene", desc: "Globe, descent, relief, network, panels. Real data, and what it costs to compose them", ready: true },
 ];
 
 export default function Home() {
   return (
     <main className="mx-auto max-w-3xl px-6 py-16 font-mono text-sm">
-      <h1 className="text-lg font-bold">Mapping Tool 2026 — test di fattibilita&apos;</h1>
+      <h1 className="text-lg font-bold">Mapping Tool 2026 — feasibility tests</h1>
       <p className="mt-2 text-black/60 dark:text-white/60">
-        Piano dei test in <code>masterplan/</code>. Ogni pagina misura una cosa sola.
+        Test plan in <code>masterplan/</code>. Each page measures one thing.
       </p>
 
       <ul className="mt-10 space-y-1">

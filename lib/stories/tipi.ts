@@ -163,13 +163,13 @@ export const CONFIGURAZIONE_PREDEFINITA: Configurazione = {
 };
 
 export const ETICHETTE: Record<ArchetipoId, string> = {
-  campoLibero: "Campo libero",
-  sottoAssedio: "Sotto assedio",
-  annoPerduto: "L'anno perduto",
-  anomalieModello: "Anomalie rispetto al modello",
-  pubblicoCheNonTorna: "Il pubblico che non torna",
-  gemelliDivergenti: "I gemelli divergenti",
-  concentrazione: "La concentrazione",
+  campoLibero: "Open field",
+  sottoAssedio: "Under siege",
+  annoPerduto: "The lost year",
+  anomalieModello: "Model anomalies",
+  pubblicoCheNonTorna: "The audience that stays away",
+  gemelliDivergenti: "Diverging twins",
+  concentrazione: "The concentration",
 };
 
 export const STRATI: Record<ArchetipoId, Regia["strato"]> = {

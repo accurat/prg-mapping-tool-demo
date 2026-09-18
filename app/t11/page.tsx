@@ -70,11 +70,11 @@ export default function T11Page() {
   if (errore) {
     return (
       <main className="mx-auto max-w-2xl px-6 py-24 font-mono text-sm text-white/70">
-        <p className="text-red-400">Dataset non disponibile — {errore}</p>
+        <p className="text-red-400">Dataset unavailable — {errore}</p>
         <p className="mt-4">
-          I dati del cliente non stanno in questo repository. Si preparano con{" "}
-          <code className="text-white">pnpm build:dataset</code>, che li legge dal repository del
-          tool 2025 affiancato a questo.
+          The client data does not live in this repository. Prepare it with{" "}
+          <code className="text-white">pnpm build:dataset</code>, which reads it from the 2025 tool
+          repository sitting alongside this one.
         </p>
       </main>
     );
@@ -83,7 +83,7 @@ export default function T11Page() {
   if (!esito) {
     return (
       <main className="mx-auto max-w-2xl px-6 py-24 font-mono text-sm text-white/50">
-        caricamento del dataset e calcolo delle storie…
+        loading the dataset and computing the stories…
       </main>
     );
   }
@@ -94,26 +94,26 @@ export default function T11Page() {
     <main className="min-h-screen bg-black pb-16 text-white">
       <header className="border-b border-white/10 px-6 py-8 sm:px-10">
         <h1 className="text-sm uppercase tracking-[0.2em] text-white/40">
-          T11 — le storie estratte dai dati
+          T11 — the stories drawn from the data
         </h1>
         <dl className="mt-5 flex flex-wrap gap-x-10 gap-y-4 font-mono text-sm">
-          <Totale etichetta="negozi" valore={conta(n.negozi)} />
-          <Totale etichetta="con vendite" valore={conta(n.misurabili)} />
-          <Totale etichetta="sotto il riferimento" valore={conta(n.sotto)} />
-          <Totale etichetta="potenziale inespresso" valore={valuta(n.potenziale)} />
+          <Totale etichetta="stores" valore={conta(n.negozi)} />
+          <Totale etichetta="with sales" valore={conta(n.misurabili)} />
+          <Totale etichetta="below the reference" valore={conta(n.sotto)} />
+          <Totale etichetta="unrealised potential" valore={valuta(n.potenziale)} />
           <Totale
-            etichetta="crescita possibile"
+            etichetta="possible growth"
             valore={n.crescita === null ? "—" : percentuale(n.crescita, { segno: true })}
             forte
           />
-          <Totale etichetta="celle del rilievo" valore={conta(esito.contesto.unita.length)} />
-          <Totale etichetta="calcolo" valore={`${esito.durataMs.toFixed(0)} ms`} />
+          <Totale etichetta="relief cells" valore={conta(esito.contesto.unita.length)} />
+          <Totale etichetta="computed in" valore={`${esito.durataMs.toFixed(0)} ms`} />
         </dl>
       </header>
 
       <section
         className="flex snap-x snap-mandatory gap-4 overflow-x-auto px-6 py-8 sm:px-10"
-        aria-label="storie"
+        aria-label="stories"
       >
         {esito.storie.map((s) => (
           <Scheda
@@ -130,11 +130,11 @@ export default function T11Page() {
 
       <section className="mt-12 px-6 sm:px-10">
         <h2 className="text-xs uppercase tracking-[0.18em] text-white/35">
-          Candidate per criterio
+          Candidates per criterion
         </h2>
         <p className="mt-2 max-w-2xl text-sm text-white/45">
-          Quante aree ogni criterio ha segnalato, prima dei filtri. Un criterio che non produce
-          niente e uno che produce centinaia di casi sono due modi diversi di non dire niente.
+          How many areas each criterion flagged, before the filters. A criterion that finds
+          nothing and one that finds hundreds of cases are two ways of saying nothing.
         </p>
         <table className="mt-5 font-mono text-xs">
           <tbody>
@@ -145,7 +145,7 @@ export default function T11Page() {
                   <td className="py-1 pr-8">{ETICHETTE[id as keyof typeof ETICHETTE]}</td>
                   <td className="py-1 pr-6 text-right tabular-nums">{quante}</td>
                   <td className="py-1 text-white/40">
-                    {scelte ? `${scelte} in lista` : "nessuna in lista"}
+                    {scelte ? `${scelte} in the list` : "none in the list"}
                   </td>
                 </tr>
               );
@@ -211,17 +211,17 @@ function Dettaglio({ storia }: { storia: Storia }) {
 
         <dl className="grid grid-cols-[auto_auto] gap-x-8 gap-y-1 self-start font-mono text-xs">
           <dt className="col-span-2 pb-2 text-[11px] uppercase tracking-wider text-white/35">
-            quello che riceve la scena
+            what the scene receives
           </dt>
-          <dt className="py-0.5 text-white/40">centro</dt>
+          <dt className="py-0.5 text-white/40">centre</dt>
           <dd className="py-0.5 text-right tabular-nums">
             {storia.regia.centro[0].toFixed(3)}, {storia.regia.centro[1].toFixed(3)}
           </dd>
           <dt className="py-0.5 text-white/40">zoom</dt>
           <dd className="py-0.5 text-right tabular-nums">{storia.regia.zoom}</dd>
-          <dt className="py-0.5 text-white/40">strato</dt>
-          <dd className="py-0.5 text-right">{storia.regia.strato ?? "nessuno"}</dd>
-          <dt className="py-0.5 text-white/40">punteggio</dt>
+          <dt className="py-0.5 text-white/40">layer</dt>
+          <dd className="py-0.5 text-right">{storia.regia.strato ?? "none"}</dd>
+          <dt className="py-0.5 text-white/40">score</dt>
           <dd className="py-0.5 text-right tabular-nums">{storia.punteggio.toFixed(3)}</dd>
         </dl>
       </div>

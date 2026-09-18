@@ -31,7 +31,7 @@ export function Profilo({
       viewBox={`0 0 ${larghezza} ${altezza}`}
       preserveAspectRatio="none"
       role="img"
-      aria-label="profilo del potenziale inespresso attorno all'area"
+      aria-label="profile of the unrealised potential around the area"
     >
       {barre.map((b, i) => {
         // Un'altezza minima visibile: una colonna a zero sparisce, e una

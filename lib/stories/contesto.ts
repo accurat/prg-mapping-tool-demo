@@ -89,7 +89,7 @@ export function nomeDominante(d: Dataset, indici: ArrayLike<number>): string {
       quante = n;
     }
   }
-  if (migliore < 0) return "area senza nome";
+  if (migliore < 0) return "unnamed area";
 
   const citta = d.testi.citta.valori[Math.floor(migliore / CHIAVE)];
   const codiceStato = (migliore % CHIAVE) - 1;

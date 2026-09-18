@@ -138,9 +138,9 @@ export default function T12Page() {
   if (errore) {
     return (
       <main className="mx-auto max-w-2xl px-6 py-24 font-mono text-sm text-white/70">
-        <p className="text-red-400">Dataset non disponibile — {errore}</p>
+        <p className="text-red-400">Dataset unavailable — {errore}</p>
         <p className="mt-4">
-          Si prepara con <code className="text-white">pnpm build:dataset</code>.
+          Prepare it with <code className="text-white">pnpm build:dataset</code>.
         </p>
       </main>
     );
@@ -149,7 +149,7 @@ export default function T12Page() {
   if (!caricato) {
     return (
       <main className="mx-auto max-w-2xl px-6 py-24 font-mono text-sm text-white/50">
-        caricamento del dataset…
+        loading the dataset…
       </main>
     );
   }
@@ -226,7 +226,7 @@ function Scena({
     setProva(null);
 
     /**
-     * Ogni configurazione si misura due volte: a camera ferma e a camera in
+     * Ogni configurazione si misura due volte: a camera still e a camera in
      * movimento.
      *
      * Il momento che preoccupa non e' quello in cui il muro sta fermo — li' un
@@ -240,10 +240,10 @@ function Scena({
      * confrontabili fra loro.
      */
     const configurazioni = [
-      { nome: "scena sola", p: false, b: false, n: false },
-      { nome: "con i pannelli", p: true, b: false, n: false },
-      { nome: "+ sfocatura di fondo", p: true, b: true, n: false },
-      { nome: "+ numeri vivi", p: true, b: false, n: true },
+      { nome: "scene only", p: false, b: false, n: false },
+      { nome: "with the panels", p: true, b: false, n: false },
+      { nome: "+ backdrop blur", p: true, b: true, n: false },
+      { nome: "+ live numbers", p: true, b: false, n: true },
     ];
 
     const raccolte: Misura[] = [];
@@ -379,17 +379,17 @@ function Scena({
   const vociStriscia = suUnArea
     ? [
         luogo,
-        `${conta(sintesi.negozi)} negozi collegati`,
+        `${conta(sintesi.negozi)} connected stores`,
         valuta(sintesi.potenziale),
-        `${percentuale(sintesi.crescita ?? 0, { segno: true })} possibile`,
-        `paese ${percentuale(nazionale.crescita ?? 0, { segno: true })}`,
+        `${percentuale(sintesi.crescita ?? 0, { segno: true })} possible`,
+        `country ${percentuale(nazionale.crescita ?? 0, { segno: true })}`,
       ]
     : [
-        "Stati Uniti",
-        `${conta(nazionale.misurabili)} negozi con vendite`,
-        `${conta(scena.stores.length)} rotte di rifornimento`,
+        "United States",
+        `${conta(nazionale.misurabili)} stores with sales`,
+        `${conta(scena.stores.length)} supply routes`,
         valuta(nazionale.potenziale),
-        `${percentuale(nazionale.crescita ?? 0, { segno: true })} possibile`,
+        `${percentuale(nazionale.crescita ?? 0, { segno: true })} possible`,
       ];
 
   return (
@@ -416,11 +416,11 @@ function Scena({
             visibili={pannelli ? visibili : NIENTE}
             zone={{
               sinistra: (
-                <Pannello titolo="rete di rifornimento" sfocato={sfocatura}>
+                <Pannello titolo="supply network" sfocato={sfocatura}>
                   <div style={{ fontSize: TIPI.titolo, lineHeight: 1.05 }}>{luogo}</div>
                   <div style={{ height: 24 }} />
                   <Riga
-                    etichetta="crescita possibile"
+                    etichetta="possible growth"
                     valore={
                       numeriVivi ? (
                         <Vivo base={sintesi.crescita ?? 0} />
@@ -430,20 +430,20 @@ function Scena({
                     }
                     grande
                   />
-                  <Riga etichetta="potenziale inespresso" valore={valuta(sintesi.potenziale)} />
-                  <Riga etichetta="negozi collegati" valore={conta(sintesi.negozi)} />
+                  <Riga etichetta="unrealised potential" valore={valuta(sintesi.potenziale)} />
+                  <Riga etichetta="connected stores" valore={conta(sintesi.negozi)} />
                   <Riga
-                    etichetta="sotto il riferimento"
-                    valore={`${sintesi.sotto} su ${sintesi.misurabili}`}
+                    etichetta="below the reference"
+                    valore={`${sintesi.sotto} of ${sintesi.misurabili}`}
                   />
                 </Pannello>
               ),
               destra: (
-                <Pannello titolo="profilo shopper" sfocato={sfocatura}>
+                <Pannello titolo="shopper profile" sfocato={sfocatura}>
                   <Barre voci={voci} larghezza={1792 - 80} />
                   <div style={{ fontSize: TIPI.minimo, color: COLORI.smorzato, marginTop: 16 }}>
-                    barra: la selezione <span style={{ color: COLORI.bordo }}>·</span> tacca: media
-                    nazionale
+                    bar: the selection <span style={{ color: COLORI.bordo }}>·</span> tick:
+                    national average
                   </div>
                 </Pannello>
               ),
@@ -457,46 +457,46 @@ function Scena({
 
       <Hud>
         <div className="flex items-start gap-3">
-          <HudPanel title="T12 — la scena">
-            <Row label="momento" value={nomeFase(fase, inclinazione)} tone="good" />
+          <HudPanel title="T12 — the scene">
+            <Row label="moment" value={nomeFase(fase, inclinazione)} tone="good" />
             <Row
-              label="inclinazione"
-              value={inclinazione === "discesa" ? "nella discesa" : "nella stretta"}
+              label="tilt"
+              value={inclinazione === "discesa" ? "in the descent" : "in the close-up"}
               tone="warn"
             />
             <Row
-              label="fotogrammi mediana"
+              label="frames, median"
               value={`${stats.median.toFixed(1)}/s`}
               tone={stats.median ? fpsTone(stats.median) : "normal"}
             />
             <Row
-              label="minimo (finestra)"
+              label="lowest (window)"
               value={`${stats.min.toFixed(1)}/s`}
               tone={stats.min ? fpsTone(stats.min) : "normal"}
             />
             <Row
-              label="peggiore (sessione)"
+              label="worst (session)"
               value={`${stats.worst.toFixed(1)}/s`}
               tone={stats.worst ? fpsTone(stats.worst) : "normal"}
             />
             <Row
-              label="misura attendibile"
-              value={trust.suspect ? "NO" : "si"}
+              label="measurement valid"
+              value={trust.suspect ? "NO" : "yes"}
               tone={trust.suspect ? "bad" : "good"}
             />
           </HudPanel>
 
-          <HudPanel title="interruttori">
-            <Row label="P  pannelli" value={pannelli ? "accesi" : "spenti"} tone={pannelli ? "good" : "normal"} />
-            <Row label="B  sfocatura" value={sfocatura ? "accesa" : "spenta"} tone={sfocatura ? "bad" : "normal"} />
-            <Row label="N  numeri vivi" value={numeriVivi ? "accesi" : "spenti"} tone={numeriVivi ? "warn" : "normal"} />
+          <HudPanel title="switches">
+            <Row label="P  panels" value={pannelli ? "on" : "off"} tone={pannelli ? "good" : "normal"} />
+            <Row label="B  blur" value={sfocatura ? "on" : "off"} tone={sfocatura ? "bad" : "normal"} />
+            <Row label="N  live numbers" value={numeriVivi ? "on" : "off"} tone={numeriVivi ? "warn" : "normal"} />
           </HudPanel>
 
-          <HudPanel title="scena">
-            <Row label="rotte" value={scena.stores.length} />
-            <Row label="destinazioni" value={scena.hubs.length} />
+          <HudPanel title="scene">
+            <Row label="routes" value={scena.stores.length} />
+            <Row label="destinations" value={scena.hubs.length} />
             <Row
-              label="precaricamento"
+              label="preload"
               value={prefetchMs === null ? "—" : `${(prefetchMs / 1000).toFixed(1)} s`}
             />
           </HudPanel>
@@ -506,10 +506,10 @@ function Scena({
           {prova ? <Risultati righe={prova} inCorso={inCorso} /> : null}
           <HudPanel>
             <div className="text-white/60">
-              <b className="text-white">R</b> ripeti · <b className="text-white">I</b> inclinazione
-              · <b className="text-white">P</b> pannelli · <b className="text-white">B</b>{" "}
-              sfocatura · <b className="text-white">N</b> numeri vivi ·{" "}
-              <b className="text-white">M</b> prova (8 × 5 s)
+              <b className="text-white">R</b> replay · <b className="text-white">I</b> tilt ·{" "}
+              <b className="text-white">P</b> panels · <b className="text-white">B</b> blur ·{" "}
+              <b className="text-white">N</b> live numbers · <b className="text-white">M</b> test
+              (8 × 5 s)
             </div>
           </HudPanel>
         </div>
@@ -556,22 +556,22 @@ function Risultati({ righe, inCorso }: { righe: Misura[]; inCorso: boolean }) {
   const base = righe[0];
 
   return (
-    <HudPanel title={inCorso ? `prova in corso — ${righe.length} di 4` : "prova completata"}>
+    <HudPanel title={inCorso ? `test running — ${righe.length} of 4` : "test complete"}>
       <div className="grid grid-cols-[12rem_5rem_5rem_6rem_5rem_5rem_6rem] gap-x-4 leading-6">
         <span />
         <span className="col-span-3 border-b border-white/10 text-center text-white/40">
-          camera ferma
+          camera still
         </span>
         <span className="col-span-3 border-b border-white/10 text-center text-white/40">
-          camera in movimento
+          camera moving
         </span>
         <span />
-        <span className="text-right text-white/40">mediana</span>
+        <span className="text-right text-white/40">median</span>
         <span className="text-right text-white/40">p95</span>
-        <span className="text-right text-white/40">peggiore</span>
-        <span className="text-right text-white/40">mediana</span>
+        <span className="text-right text-white/40">worst</span>
+        <span className="text-right text-white/40">median</span>
         <span className="text-right text-white/40">p95</span>
-        <span className="text-right text-white/40">peggiore</span>
+        <span className="text-right text-white/40">worst</span>
 
         {righe.map((r, i) => (
           <div key={r.nome} className="contents">
@@ -603,7 +603,7 @@ function Risultati({ righe, inCorso }: { righe: Misura[]; inCorso: boolean }) {
                           : "text-white/70"
                     }`}
                   >
-                    {buona ? `${c.worstMs.toFixed(1)} ms` : "non valida"}
+                    {buona ? `${c.worstMs.toFixed(1)} ms` : "invalid"}
                   </span>
                 </div>
               );
@@ -613,8 +613,8 @@ function Risultati({ righe, inCorso }: { righe: Misura[]; inCorso: boolean }) {
       </div>
       {righe.some((r) => !valida(r.ferma) || !valida(r.mossa)) ? (
         <div className="mt-2 max-w-xl text-red-400">
-          Una riga non valida significa che il browser ha smesso di disegnare: succede quando la
-          finestra passa dietro. Rimettila davanti e ripeti con M.
+          An invalid row means the browser stopped drawing: that happens when the window goes
+          behind another one. Bring it back to the front and run M again.
         </div>
       ) : null}
     </HudPanel>

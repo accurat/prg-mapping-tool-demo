@@ -822,6 +822,28 @@ senza errori parlanti. Non è un difetto del codice: si apre una scheda nuova.
 
 ---
 
+# Inglese a schermo, e due soli colori
+
+**Tutto quello che si vede è in inglese**: pannelli, striscia, nomi dei momenti, archetipi e frasi
+delle storie, pagina indice. I numeri seguono la convenzione americana — `$8.4k`, `9,434` — perché
+una cifra scritta all'italiana in un tool in inglese si legge come un errore di battitura. Il
+codice, i commenti e questi documenti restano in italiano: sono lo strumento di chi lo costruisce,
+non il tool.
+
+**Il colore del valore ha due soli stati**: giallo pieno sopra la metà della scala, blu pieno
+sotto. Niente rampa continua, niente tinte smorzate dalla trasparenza.
+
+Viene da T9: a dodici metri la luminosità non trasmette differenze, e una rampa fra due tinte passa
+per dei mezzi toni che da lontano non si distinguono né dall'uno né dall'altro estremo. Due colori
+pieni si riconoscono a colpo d'occhio e si **contano**; venti gradazioni si guardano e basta. Si
+perde la lettura fine — quanto è alto un valore dentro la propria metà — ma quella la dicono già
+l'altezza della colonna e i pannelli.
+
+Le dissolvenze della sequenza restano: l'opacità serve a far entrare e uscire le cose dalla scena,
+e quello è movimento, non valore.
+
+---
+
 ## Cosa resta fuori, di proposito
 
 - La palette e l'illuminazione. Restano quelle di prova. Vale quanto detto in T9: è la cosa che

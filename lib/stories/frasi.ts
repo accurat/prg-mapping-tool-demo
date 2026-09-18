@@ -14,19 +14,18 @@ import type { Candidata, ArchetipoId } from "./tipi.ts";
 
 const TEMPLATE: Record<ArchetipoId, (v: Record<string, string>) => string> = {
   campoLibero: (v) =>
-    `Potenziale inespresso alto e concorrenza ${v.concorrenti} rispetto alla mediana nazionale.`,
+    `High unrealised potential and competition ${v.concorrenti} against the national median.`,
   sottoAssedio: (v) =>
-    `Potenziale inespresso alto, ma con concorrenza ${v.concorrenti} rispetto alla mediana nazionale.`,
+    `High unrealised potential, but competition ${v.concorrenti} against the national median.`,
   annoPerduto: (v) =>
-    `Vendite ${v.calo} sull'anno precedente, ${v.scarto} rispetto al paese, e non e' un caso isolato: ${v.diffusione} negozi vanno peggio della media.`,
-  anomalieModello: (v) =>
-    `${v.quanti} negozi ${v.verso} il modello: ${v.volte} la quota nazionale.`,
+    `Sales ${v.calo} year on year, ${v.scarto} against the country, and it is not one store: ${v.diffusione} are doing worse than average.`,
+  anomalieModello: (v) => `${v.quanti} stores ${v.verso} the model: ${v.volte} the national share.`,
   pubblicoCheNonTorna: (v) =>
-    `Bacino diverso dalla media nazionale del ${v.distanza}, con quota ${v.quota} rispetto a quella del paese.`,
+    `Catchment ${v.distanza} away from the national profile, with share ${v.quota} against the country.`,
   gemelliDivergenti: (v) =>
-    `${v.debole} e ${v.forte} hanno bacini quasi identici e quote diverse del ${v.divergenza}.`,
+    `${v.debole} and ${v.forte} have near-identical catchments and shares ${v.divergenza} apart.`,
   concentrazione: (v) =>
-    `${v.quante} valgono il ${v.quota} del potenziale inespresso del paese: ${v.valore}.`,
+    `${v.quante} hold ${v.quota} of the country's unrealised potential: ${v.valore}.`,
 };
 
 export function componiFrase(c: Candidata): string {
@@ -43,7 +42,7 @@ export function componiFrase(c: Candidata): string {
 export function componiLuogo(c: Candidata): string {
   const nomi = c.aree.map((u) => u.nome);
   if (nomi.length === 1) return nomi[0];
-  if (nomi.length === 2) return `${nomi[0]} e ${nomi[1]}`;
+  if (nomi.length === 2) return `${nomi[0]} and ${nomi[1]}`;
   const primi = nomi.slice(0, 3).join(", ");
-  return `${primi} e altri ${nomi.length - 3}`;
+  return `${primi} and ${nomi.length - 3} more`;
 }

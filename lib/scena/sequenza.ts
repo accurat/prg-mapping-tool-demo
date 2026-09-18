@@ -125,24 +125,24 @@ export type Fase =
  * significherebbe annunciare qualcosa che non si vede.
  */
 export function nomeFase(fase: Fase, inclinazione: Inclinazione): string {
-  if (inclinazione === "fuoco" && fase === "colonne") return "il territorio si popola";
+  if (inclinazione === "fuoco" && fase === "colonne") return "the territory fills in";
   return NOMI_FASE[fase];
 }
 
 export const NOMI_FASE: Record<Fase, string> = {
-  attesa: "in attesa",
-  preparazione: "precaricamento del corridoio",
-  globo: "il mondo si collega",
-  discesa: "discesa dal globo",
-  paese: "il paese intero",
-  colonne: "il potenziale emerge",
-  lettura: "lettura",
-  appiattimento: "da dato a luogo",
-  archi: "la rete si accende",
-  fuoco: "si stringe sull'area",
-  flusso: "la merce scorre",
-  rilievo: "restano le altezze",
-  numeri: "i numeri dell'area",
+  attesa: "waiting",
+  preparazione: "preloading the corridor",
+  globo: "the world connects",
+  discesa: "descent from the globe",
+  paese: "the whole country",
+  colonne: "the potential emerges",
+  lettura: "reading",
+  appiattimento: "from data to place",
+  archi: "the network lights up",
+  fuoco: "closing in on the area",
+  flusso: "goods in transit",
+  rilievo: "the heights remain",
+  numeri: "the numbers of the area",
 };
 
 /**
@@ -179,11 +179,28 @@ const LUCE = new LightingEffect({
 });
 
 /**
- * Colore caldo-freddo: a dodici metri la tinta e' l'unica cosa che trasmette
- * differenze, la luminosita' no (vedi T9). Quindi il valore sta nella tinta.
+ * Il colore del valore: **due colori, nessuna via di mezzo**.
+ *
+ * Sopra la meta' della scala giallo pieno, sotto blu pieno. Non e' una rampa
+ * continua e non e' una tinta smorzata dalla trasparenza.
+ *
+ * La ragione viene da T9: a dodici metri la luminosita' non trasmette
+ * differenze, e una rampa fra due tinte passa per dei mezzi toni che da lontano
+ * non si distinguono ne' dall'uno ne' dall'altro estremo. Due colori pieni si
+ * riconoscono a colpo d'occhio e si contano; venti gradazioni si guardano e
+ * basta. Si perde la lettura fine — quanto e' alto un valore dentro la propria
+ * meta' — ma quella la dicono gia' l'altezza e i pannelli.
+ *
+ * L'alfa che questa funzione restituisce e' sempre piena: le dissolvenze della
+ * sequenza la moltiplicano dove servono, ma il colore in se' non e' mai
+ * semitrasparente.
  */
-export function coloreValore(t: number, alpha = 235): [number, number, number, number] {
-  return [40 + t * 215, 70 + t * 95, 195 - t * 150, alpha];
+const BLU: [number, number, number] = [56, 104, 240];
+const GIALLO: [number, number, number] = [255, 190, 58];
+
+export function coloreValore(t: number, alpha = 255): [number, number, number, number] {
+  const [r, g, b] = t >= 0.5 ? GIALLO : BLU;
+  return [r, g, b, alpha];
 }
 
 /** Secondi che un carico impiega a percorrere il collegamento. */

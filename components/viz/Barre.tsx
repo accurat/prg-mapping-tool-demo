@@ -47,7 +47,7 @@ export function Barre({
       height={voci.length * altezzaRiga}
       viewBox={`0 0 ${larghezza} ${voci.length * altezzaRiga}`}
       role="img"
-      aria-label="confronto con la media del perimetro"
+      aria-label="comparison with the perimeter average"
     >
       {voci.map((v, i) => {
         const y = i * altezzaRiga;
