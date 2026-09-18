@@ -54,7 +54,8 @@ export type Fase =
   | "appiattimento"
   | "archi"
   | "fuoco"
-  | "flusso";
+  | "flusso"
+  | "rilievo";
 
 export const NOMI_FASE: Record<Fase, string> = {
   attesa: "in attesa",
@@ -66,6 +67,7 @@ export const NOMI_FASE: Record<Fase, string> = {
   archi: "la rete si accende",
   fuoco: "si stringe sull'area",
   flusso: "la merce scorre",
+  rilievo: "restano le altezze",
 };
 
 /**
@@ -116,6 +118,31 @@ const quantiCarichi = (volume: number) => 1 + Math.round(volume * 4);
 
 type Percorso = { path: [number, number, number][]; timestamps: number[]; store: Store };
 
+/**
+ * Lo stato della scena in un istante.
+ *
+ * Non e' il tempo della sequenza ma le sue grandezze: quanto sono emerse le
+ * colonne, quanto sono appiattite, quanto e' tracciata la rete. Un momento puo'
+ * essere disegnato da solo, in qualunque ordine, e questo e' il motivo per cui
+ * due copioni diversi possono condividere lo stesso disegno.
+ */
+export type Momento = {
+  /** Quanto sono emerse le colonne dal terreno, 0..1. */
+  salita?: number;
+  /** Quanto sono state appiattite a segnaposto, 0..1. */
+  piatto?: number;
+  /** Quanto e' stata tracciata la rete, 0..1. */
+  rete?: number;
+  /** Quanto e' svanito tutto cio' che non e' la stella scelta, 0..1. */
+  stretta?: number;
+  /** Secondi trascorsi dall'inizio del flusso di merce. */
+  flusso?: number;
+  /** Quanto si e' spenta la rete gia' tracciata, 0..1. */
+  svanire?: number;
+  /** Presenza dell'hub, 0..1. Se assente segue l'appiattimento. */
+  hub?: number;
+};
+
 export function useSequenza({
   map,
   labelId,
@@ -134,6 +161,20 @@ export function useSequenza({
   const overlayRef = useRef<MapLibreOverlay | null>(null);
   const avviata = useRef(false);
   const rafFlusso = useRef(0);
+  /**
+   * Quale esecuzione della sequenza e' quella buona.
+   *
+   * Una sequenza dura mezzo minuto e vive dentro una catena di attese: se ne
+   * parte una seconda mentre la prima e' a meta', le due continuano a disegnare
+   * sulla stessa scena e vince l'ultima che ha parlato. Non e' un caso di
+   * scuola — basta un interruttore che faccia ripartire il volo — e il sintomo
+   * e' perfido: la scena resta ferma a un momento passato mentre il pannello
+   * annuncia quello giusto.
+   *
+   * Ogni esecuzione prende un numero. Dopo ogni attesa controlla di essere
+   * ancora l'ultima, e se non lo e' si ritira in silenzio.
+   */
+  const corsa = useRef(0);
 
   useEffect(() => () => cancelAnimationFrame(rafFlusso.current), []);
 
@@ -232,16 +273,28 @@ export function useSequenza({
   /**
    * Disegna la scena per un dato istante.
    *
-   * `salita`   0..1  quanto sono emerse le colonne
-   * `piatto`   0..1  quanto sono state appiattite a segnaposto
-   * `rete`     0..1  quanto si e' estesa la rete
-   * `stretta`  0..1  quanto e' svanito tutto cio' che non e' la stella scelta
-   * `flusso`   secondi trascorsi dall'inizio del flusso
+   * I valori arrivano in un oggetto e non in fila: sono sette, cambiano quasi
+   * mai tutti insieme, e una chiamata come `disegna(1, 1, 1, 0, 0, 1)` non si
+   * rilegge. Ogni momento della sequenza dichiara solo quello che sposta.
    */
   const disegna = useCallback(
-    (salita: number, piatto: number, rete: number, stretta = 0, flusso = 0) => {
+    (momento: Momento) => {
       const overlay = overlayRef.current;
       if (!overlay) return;
+
+      const {
+        salita = 0,
+        piatto = 0,
+        rete = 0,
+        stretta = 0,
+        flusso = 0,
+        svanire = 0,
+      } = momento;
+      // L'hub segue l'appiattimento — compare quando le celle diventano
+      // segnaposto — tranne quando glielo si dice esplicitamente. Serve
+      // nell'ultimo momento della versione inclinata, dove le celle tornano
+      // alte ma l'hub deve restare dov'e': e' un luogo, non un dato.
+      const hub = momento.hub ?? piatto;
 
       // Una rampa lineare di opacita' su fondo nero non si legge come una
       // dissolvenza ma come uno spegnimento: serve una curva che rallenti
@@ -290,6 +343,7 @@ export function useSequenza({
               value: percorso.store.value,
               alpha:
                 ingresso *
+                (1 - svanire) *
                 bordo(Math.min(1, avanzamento / 0.08)) *
                 bordo(Math.min(1, (1 - avanzamento) / 0.08)),
             });
@@ -337,19 +391,23 @@ export function useSequenza({
 
         new TripsLayer<Percorso>({
           id: "rete",
-          data: percorsiAttivi,
+          // Una rete del tutto trasparente continuerebbe a scrivere nel buffer
+          // di profondita' e a nascondere le colonne che le passano davanti:
+          // a dissolvenza conclusa i percorsi vanno tolti dai dati, non solo
+          // resi invisibili.
+          data: svanire >= 0.999 ? [] : percorsiAttivi,
           getPath: (p) => p.path,
           getTimestamps: (p) => p.timestamps,
           getColor: (p) => {
             const c = coloreValore(p.store.value);
-            return [c[0], c[1], c[2], 255 * restaStore(p.store)];
+            return [c[0], c[1], c[2], 255 * restaStore(p.store) * (1 - svanire)];
           },
           widthUnits: "pixels",
           getWidth: 6,
           // La scia non svanisce mai: serve un disegno progressivo, non una cometa.
           trailLength: finePercorsi * 2,
           currentTime: rete * finePercorsi,
-          updateTriggers: { getColor: stretta },
+          updateTriggers: { getColor: [stretta, svanire] },
           ...under(labelId),
         }),
 
@@ -360,12 +418,12 @@ export function useSequenza({
           radius: dati.raggioHub,
           extruded: true,
           getPosition: (h) => h.position,
-          getElevation: () => dati.altezzaSegnaposto * piatto,
+          getElevation: () => dati.altezzaSegnaposto * hub,
           // Verde acqua: sta fuori dalla scala caldo-freddo che misura il
           // potenziale, quindi non si confonde con un negozio. L'hub non e' un
           // punto della scala, e' un'altra categoria.
-          getFillColor: (h) => [80, 235, 200, 255 * piatto * restaHub(h.index)],
-          updateTriggers: { getElevation: piatto, getFillColor: [piatto, stretta] },
+          getFillColor: (h) => [80, 235, 200, 255 * hub * restaHub(h.index)],
+          updateTriggers: { getElevation: hub, getFillColor: [hub, stretta] },
           ...under(labelId),
         }),
 
@@ -413,24 +471,32 @@ export function useSequenza({
    * seguire il movimento e quindi l'addolcimento, altre devono avere una curva
    * propria riferita al tempo reale.
    */
-  const anima = useCallback((ms: number, aFotogramma: (dolce: number, lineare: number) => void) => {
-    return new Promise<void>((risolvi) => {
-      const inizio = performance.now();
-      const passo = (ora: number) => {
-        const lineare = Math.min(1, (ora - inizio) / ms);
-        aFotogramma(lineare * lineare * (3 - 2 * lineare), lineare);
-        if (lineare >= 1) return risolvi();
+  const anima = useCallback(
+    (ms: number, aFotogramma: (dolce: number, lineare: number) => void, viva: () => boolean = () => true) => {
+      return new Promise<void>((risolvi) => {
+        const inizio = performance.now();
+        const passo = (ora: number) => {
+          if (!viva()) return risolvi();
+          const lineare = Math.min(1, (ora - inizio) / ms);
+          aFotogramma(lineare * lineare * (3 - 2 * lineare), lineare);
+          if (lineare >= 1) return risolvi();
+          requestAnimationFrame(passo);
+        };
         requestAnimationFrame(passo);
-      };
-      requestAnimationFrame(passo);
-    });
-  }, []);
+      });
+    },
+    [],
+  );
 
   const esegui = useCallback(async () => {
     const m = map;
     if (!m) return;
     cancelAnimationFrame(rafFlusso.current);
-    const attendi = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+    const mia = ++corsa.current;
+    const viva = () => corsa.current === mia;
+    const attendi = (ms: number) =>
+      new Promise<void>((r) => setTimeout(() => r(), ms));
 
     // L'inclinazione e' una sola, spostata: o sta nella discesa o sta nella
     // stretta. Averla in entrambe vorrebbe dire non cambiarla mai, e il
@@ -440,7 +506,7 @@ export function useSequenza({
 
     setFase("preparazione");
     m.jumpTo({ center: dati.centro, zoom: START_ZOOM, pitch: 0, bearing: 0 });
-    disegna(0, 0, 0);
+    disegna({});
     const rapporto = await prefetchDescent(m, {
       center: dati.centro,
       fromZoom: START_ZOOM,
@@ -450,8 +516,10 @@ export function useSequenza({
       // quelle sbagliate e' come non caricarne affatto.
       toPitch: pitchDiscesa,
     });
+    if (!viva()) return;
     setPrefetchMs(rapporto.durationMs);
     await settle(m, 4000);
+    if (!viva()) return;
 
     // Un volo solo, dal globo fino a destinazione, e **nessun cambio di
     // proiezione**: su un'inquadratura larga 5760 pixel la curvatura resta
@@ -468,21 +536,25 @@ export function useSequenza({
       essential: true,
     });
     await attendi(6200);
+    if (!viva()) return;
 
     setFase("colonne");
-    await anima(2600, (t) => disegna(t, 0, 0));
+    await anima(2600, (t) => disegna({ salita: t }), viva);
 
     setFase("lettura");
     await attendi(2200);
+    if (!viva()) return;
 
     setFase("appiattimento");
-    await anima(1600, (t) => disegna(1, t, 0));
+    await anima(1600, (t) => disegna({ salita: 1, piatto: t }), viva);
 
     await attendi(600);
+    if (!viva()) return;
     setFase("archi");
-    await anima(2600, (t) => disegna(1, 1, t));
+    await anima(2600, (t) => disegna({ salita: 1, piatto: 1, rete: t }), viva);
 
     await attendi(1800);
+    if (!viva()) return;
 
     // Il movimento della camera e la dissolvenza avvengono **insieme**: se il
     // muro si svuotasse prima, la sala vedrebbe sparire dei dati e poi un
@@ -498,17 +570,55 @@ export function useSequenza({
     });
     await anima(3000, (_dolce, lineare) => {
       const p = Math.min(1, lineare / 0.5);
-      disegna(1, 1, 1, p * p * (3 - 2 * p));
-    });
+      disegna({ salita: 1, piatto: 1, rete: 1, stretta: p * p * (3 - 2 * p) });
+    }, viva);
+    if (!viva()) return;
 
-    // Il flusso non ha una fine: da qui in poi la scena resta viva.
     setFase("flusso");
     const partenza = performance.now();
+    const secondiDiFlusso = () => (performance.now() - partenza) / 1000;
     const giro = () => {
-      disegna(1, 1, 1, 1, (performance.now() - partenza) / 1000);
+      if (!viva()) return;
+      disegna({ salita: 1, piatto: 1, rete: 1, stretta: 1, flusso: secondiDiFlusso() });
       rafFlusso.current = requestAnimationFrame(giro);
     };
     rafFlusso.current = requestAnimationFrame(giro);
+
+    // Nell'ordine originale il flusso non ha una fine: da qui in poi la scena
+    // resta viva, con la merce che continua a viaggiare.
+    if (inclinazione === "discesa") return;
+
+    /**
+     * Nell'ordine inclinato c'e' un momento in piu', ed e' quello per cui
+     * l'ordine e' stato invertito.
+     *
+     * Fin qui le celle sono rimaste segnaposto anche da vicino: la scena
+     * parlava di luoghi e di merce, e un rilievo sotto gli archi sarebbe stato
+     * una seconda cosa da guardare nello stesso istante. Adesso la rete si
+     * spegne e **le colonne tornano a essere il dato**, viste dall'unica
+     * angolazione da cui un'altezza si legge.
+     *
+     * La rete svanisce piu' in fretta di quanto le colonne salgano: le due
+     * cose non devono accavallarsi, altrimenti si vede una confusione invece
+     * di un cambio di argomento.
+     */
+    await attendi(6000);
+    if (!viva()) return;
+    cancelAnimationFrame(rafFlusso.current);
+    setFase("rilievo");
+    await anima(2600, (dolce, lineare) => {
+      disegna({
+        salita: 1,
+        piatto: 1 - dolce,
+        rete: 1,
+        stretta: 1,
+        flusso: secondiDiFlusso(),
+        svanire: Math.min(1, lineare / 0.55),
+        hub: 1,
+      });
+    }, viva);
+    if (!viva()) return;
+    disegna({ salita: 1, piatto: 0, rete: 1, stretta: 1, svanire: 1, hub: 1 });
   }, [map, disegna, anima, dati, inclinazione]);
 
   useEffect(() => {

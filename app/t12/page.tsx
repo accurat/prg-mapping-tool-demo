@@ -65,6 +65,9 @@ const VISIBILITA: Record<Fase, { alta: boolean; sinistra: boolean; destra: boole
   fuoco: { alta: false, sinistra: true, destra: false, striscia: true },
   // M9: il grafico di approfondimento compare accanto, non al posto della scena.
   flusso: { alta: false, sinistra: true, destra: true, striscia: true },
+  // Quando restano solo le altezze il grafico se ne va: il muro torna a parlare
+  // di una cosa sola, e quella cosa e' il rilievo.
+  rilievo: { alta: false, sinistra: true, destra: false, striscia: true },
 };
 
 type Caricato = { dataset: Dataset; rotte: Rotte; glossario: Glossario; scena: DatiScena };

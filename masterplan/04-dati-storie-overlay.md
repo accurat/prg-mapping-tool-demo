@@ -448,6 +448,44 @@ video integrata.
 
 ---
 
+# L'inclinazione spostata (T10, tasto `I`)
+
+Prova nata da un'osservazione: **l'altezza si legge inclinati, la geografia si legge dall'alto**,
+e la sequenza originale le aveva al contrario — arrivava inclinata sul quadro d'insieme e si
+metteva a picco proprio quando si stringeva su un'area.
+
+Con `I` i due ordini si confrontano dall'inizio. Nell'ordine invertito:
+
+1. si arriva **a picco**: il paese si legge come una carta, e a parlare è il colore;
+2. le celle emergono, si appiattiscono, la rete si accende — tutto visto dall'alto, dove la
+   struttura a stella si legge molto meglio che in prospettiva, perché gli archi non si
+   accavallano e le stelle lontane non si schiacciano l'una sull'altra;
+3. la scena **si stringe su una stella e si inclina**;
+4. dopo qualche istante **la rete si spegne e le colonne si alzano**: le celle tornano a essere
+   il dato, viste dall'unica angolazione da cui un'altezza si legge.
+
+Il quarto momento è nato da un difetto del primo tentativo: invertendo solo l'inclinazione, la
+camera si inclinava su dodici dischi piatti, perché l'appiattimento avviene due fasi prima. Il
+movimento si vedeva, l'informazione no. Ora le celle restano segnaposto anche da vicino — finché
+c'è la rete la scena parla di luoghi e di merce — e tornano dato solo quando la rete se ne va: una
+cosa per volta.
+
+La rete svanisce più in fretta di quanto le colonne salgano, così non si accavallano: si legge un
+cambio di argomento e non una confusione.
+
+## Un difetto trovato per strada: due sequenze in corso insieme
+
+Il sintomo era perfido — la scena restava ferma a un momento passato mentre il pannello annunciava
+quello giusto. La causa: una sequenza dura mezzo minuto e vive dentro una catena di attese, e
+l'interruttore ne faceva partire una seconda mentre la prima era a metà. Le due continuavano a
+disegnare sulla stessa scena e vinceva l'ultima che aveva parlato.
+
+Ogni esecuzione prende ora un numero e dopo ogni attesa controlla di essere ancora l'ultima. Non
+riguarda solo questo interruttore: vale per qualsiasi cosa faccia ripartire il volo, compreso il
+tasto `R` che c'è da sempre.
+
+---
+
 ## Cosa resta fuori, di proposito
 
 - La palette e l'illuminazione. Restano quelle di prova. Vale quanto detto in T9: è la cosa che
