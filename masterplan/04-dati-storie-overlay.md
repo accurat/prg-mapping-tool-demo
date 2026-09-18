@@ -713,6 +713,32 @@ averla sottomano evita di ripetere l'errore.
 
 ---
 
+# Il ritmo delle comparse lo decidevano i dati
+
+Colonne e collegamenti entravano in scena scaglionati **per distanza**: i più vicini al proprio
+hub per primi. L'ordine è giusto — ogni stella si apre dal centro verso fuori — ma il ritmo no,
+perché usando la distanza come ritardo è la forma dei dati a decidere quante cose accadono
+insieme.
+
+Su questa rete un quarto dei collegamenti è più corto di un decimo del più lungo. Il risultato:
+centocinquanta comparse nei primi duecento millisecondi e poi una coda lunga. A schermo non si
+legge come una comparsa scaglionata ma come **un gruppo che appare di colpo** seguito da qualche
+ritardatario.
+
+Lo scaglionamento usa ora la **posizione in classifica** per distanza invece della distanza: stesso
+ordine, comparse equidistanti nel tempo qualunque forma abbiano i dati. Misurato sulla
+distribuzione reale: il picco passa da 59 a 41 partenze per decimo di secondo, e la coda sparisce.
+
+Insieme a questo, le due animazioni usano ora il **tempo lineare** invece della curva addolcita.
+L'addolcimento serve ai movimenti di camera, dove il punto di partenza e quello d'arrivo sono
+fermi; su un tracciamento progressivo produce invece una partenza quasi immobile seguita da un
+recupero, e il recupero si vede come un gruppo che compare insieme dopo una pausa.
+
+Nella stessa passata è sparito `makeStoreNetwork`, il generatore di reti sintetiche: serviva a
+T10 e da quando la scena è una sola non lo usa più nessuno.
+
+---
+
 # Un difetto che il codice dichiarava impossibile
 
 Sintomo: una manciata di **mezzi archi azzurri fermi sulla mappa**, presenti fin dalla discesa,

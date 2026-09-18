@@ -131,6 +131,16 @@ export function costruisciScena(d: Dataset, rotte: Rotte): DatiScena {
   }
   const distanzaMassima = Math.max(...distanze, 1);
 
+  // La classifica per distanza: e' questa a scaglionare le animazioni, non la
+  // distanza stessa. Vedi la nota su `rango` nel tipo Store.
+  const perDistanza = distanze
+    .map((d, k) => ({ d, k }))
+    .sort((a, b) => a.d - b.d || a.k - b.k);
+  const rango = new Array<number>(rotte.conteggio);
+  perDistanza.forEach(({ k }, posizione) => {
+    rango[k] = posizione / Math.max(1, rotte.conteggio - 1);
+  });
+
   for (let k = 0; k < rotte.conteggio; k++) {
     const origine = rotte.origine[k];
     stores.push({
@@ -138,6 +148,7 @@ export function costruisciScena(d: Dataset, rotte: Rotte): DatiScena {
       hub: posizioneHub.get(rotte.destinazione[k])!,
       value: Math.max(0.05, scala.normalizza(valori[k])),
       reach: distanze[k] / distanzaMassima,
+      rango: rango[k],
       // Il volume e' il valore in dollari della rotta: e' la merce che passa,
       // non il margine. Le due cose nel dataset non coincidono.
       volume: Math.max(0.05, Math.min(1, valori[k] / valoreMassimo)),

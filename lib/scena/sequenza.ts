@@ -291,6 +291,7 @@ export function useSequenza({
   const percorsi = useMemo<Percorso[]>(() => {
     const CAMPIONI = 44;
     const DURATA = 100;
+
     return stores.map((store) => {
       const da = hubs[store.hub].position;
       const a = store.position;
@@ -313,7 +314,7 @@ export function useSequenza({
 
       const path: [number, number, number][] = [];
       const timestamps: number[] = [];
-      const ritardo = store.reach * 90;
+      const ritardo = store.rango * 90;
       for (let i = 0; i < CAMPIONI; i++) {
         const t = i / (CAMPIONI - 1);
         path.push([
@@ -491,9 +492,18 @@ export function useSequenza({
         return fuori;
       };
 
-      /** Scaglionata per distanza: ogni stella si apre dal centro verso fuori. */
+      /**
+       * Scaglionata per **posizione in classifica** di distanza: ogni stella si
+       * apre dal centro verso fuori, ma a ritmo costante.
+       *
+       * Con la distanza grezza il ritmo lo decideva la forma dei dati: su
+       * questa rete un quarto dei collegamenti e' piu' corto di un decimo del
+       * piu' lungo, quindi la gran parte delle colonne saliva nello stesso
+       * istante. A schermo non si leggeva come una comparsa scaglionata ma come
+       * un gruppo che appare di colpo.
+       */
       const salitaLocale = (s: Store) =>
-        Math.max(0, Math.min(1, (salita - s.reach * 0.45) / 0.55));
+        Math.max(0, Math.min(1, (salita - s.rango * 0.55) / 0.45));
 
       // I due strati esistono **sempre**, fin dal precaricamento: la prima
       // volta che la scheda video disegna un tipo di elemento deve preparare i
@@ -979,10 +989,17 @@ export function useSequenza({
      * leggerla.
      */
     setFase("colonne");
+    // Il tempo lineare, non la curva addolcita: quella parte quasi ferma e poi
+    // recupera, e il recupero si vede come un gruppo di colonne che compaiono
+    // insieme dopo una pausa.
     if (inclinazione === "discesa") {
-      await anima(2600, (t) => disegna({ salita: t, hub: 1 }), viva);
+      await anima(2600, (_dolce, lineare) => disegna({ salita: lineare, hub: 1 }), viva);
     } else {
-      await anima(2600, (t) => disegna({ salita: t, piatto: 1, hub: 1 }), viva);
+      await anima(
+        2600,
+        (_dolce, lineare) => disegna({ salita: lineare, piatto: 1, hub: 1 }),
+        viva,
+      );
     }
 
     setFase("lettura");
@@ -1000,7 +1017,14 @@ export function useSequenza({
     }
 
     setFase("archi");
-    await anima(2600, (t) => disegna({ salita: 1, piatto: 1, rete: t, hub: 1 }), viva);
+    // Il tracciamento segue il tempo **lineare**, non la curva addolcita: quella
+    // parte quasi ferma e poi recupera, e il recupero si vede come un gruppo di
+    // collegamenti che compaiono insieme dopo una pausa.
+    await anima(
+      2600,
+      (_dolce, lineare) => disegna({ salita: 1, piatto: 1, rete: lineare, hub: 1 }),
+      viva,
+    );
 
     await attendi(1800);
     if (!viva()) return;
