@@ -11,7 +11,8 @@
     "predev": "node scripts/sync-maplibre-worker.mjs && node scripts/build-dataset.mjs",
     "prebuild": "node scripts/sync-maplibre-worker.mjs && node scripts/build-dataset.mjs",
     "build:dataset": "node scripts/build-dataset.mjs",
-    "check:metrics": "node --experimental-strip-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-metrics.mts"
+    "check:metrics": "node --experimental-strip-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-metrics.mts",
+    "check:storie": "node --experimental-strip-types --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-storie.mts"
   },
   "dependencies": {
     "deck.gl": "^9.4.0",

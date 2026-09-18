@@ -255,6 +255,71 @@ strato deck.gl. L'ultima è la più costosa da scrivere ed è il motivo per cui 
 
 ---
 
+---
+
+# Esiti del motore delle storie
+
+Eseguito con `pnpm run check:storie`. Sei verifiche su sei, **51 ms** per calcolare le storie su
+10.466 negozi — il criterio era 200 — e due esecuzioni con la stessa impronta.
+
+## Quello che la verifica ha trovato
+
+**«L'anno perduto» con una soglia assoluta scattava sul 43% delle aree.** La causa non è il
+criterio, è il dataset: le vendite P&G arretrano ovunque.
+
+| Serie | Mediana anno su anno | Negozi in calo |
+| --- | --- | --- |
+| Vendite totali del negozio | +1,5% | 39% |
+| **Vendite P&G del negozio** | **−21,4%** | **81%** |
+| Vendite totali del bacino | +3,3% | 6% |
+| **Vendite P&G del bacino** | **−20,6%** | **99%** |
+
+Il «+1,5% con code a −9% e +27%» che il concept cita in §7.2 è la prima riga, cioè il fatturato
+complessivo dei negozi. Ma la storia temporale del tool riguarda la linea P&G, che si comporta in
+modo opposto. **Con quel dato, un'area che cala del 30% non è una storia, è la norma.**
+
+Il criterio ora misura lo scarto dalla variazione tipica del paese, e la diffusione conta i
+negozi che vanno *peggio della media* invece che quelli in calo. Le candidate passano da 272 a
+11, e nessuna entra negli otto: su questo dataset il calo è nazionale e non è una storia su un
+luogo. È il comportamento giusto — l'alternativa era raccontare otto volte che è stato un anno
+brutto.
+
+**Due difetti di forma, trovati leggendo la lista e non dal codice.** Una storia diceva
+«Pittsburgh, Ohio»: il nome della città veniva dal gruppo dominante e lo stato da un negozio
+qualsiasi dell'area, che stava dall'altra parte del confine. Ora si contano le coppie città-stato
+insieme. E «Kansas City» perdeva lo stato, perché il controllo per non ripetere lo stato già
+presente nel nome cercava la stringa ovunque invece che in coda.
+
+## La lista che ne esce
+
+Cinque archetipi su sette, 163 candidate, otto scelte:
+
+| | Archetipo | Luogo |
+| --- | --- | --- |
+| 1 | Anomalie rispetto al modello | Houston, Texas |
+| 2 | Anomalie rispetto al modello | Kansas City, Missouri |
+| 3 | La concentrazione | 9 stati, il 50% del potenziale |
+| 4 | Campo libero | Odessa, Texas |
+| 5 | Sotto assedio | Miami, Florida |
+| 6 | Sotto assedio | Fort Worth, Texas |
+| 7 | Campo libero | Austin, Texas |
+| 8 | Il pubblico che non torna | Carthage, Mississippi |
+
+## Cosa resta da decidere
+
+- **«I gemelli divergenti» produce 26 candidate e non entra mai negli otto.** È l'archetipo che
+  il concept considera il più persuasivo in sala. O il punteggio lo penalizza — una coppia di
+  aree medie vale meno di una grande area anomala — o le soglie sono strette. Va guardato con i
+  numeri davanti, non tarato a occhio.
+- **I 2.535 negozi che non vendono niente di P&G valgono il 41% del potenziale e non hanno un
+  archetipo.** Non sono sotto-performance ma assenza dall'assortimento, e sono la storia più
+  grande che il dataset contiene. Vale la pena aggiungere un ottavo criterio.
+- **Il rilievo nazionale ha 632 celle da 61 km, e 252 — il 40% — restano piatte** perché hanno
+  meno di cinque negozi. O si accetta un rilievo sparso, o si usano celle più grandi al livello
+  nazionale, o si abbassa la soglia. È una decisione da prendere guardandolo.
+
+---
+
 ## Cosa resta fuori, di proposito
 
 - La palette e l'illuminazione. Restano quelle di prova. Vale quanto detto in T9: è la cosa che

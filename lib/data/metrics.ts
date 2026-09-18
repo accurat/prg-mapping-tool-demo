@@ -202,18 +202,25 @@ export function composizioneMedia(d: Dataset, gruppo: GruppoDemografico): number
  * per rendere i due profili identici. Zero significa identici, uno significa
  * nessuna sovrapposizione.
  */
+export function composizioneDi(
+  d: Dataset,
+  gruppo: GruppoDemografico,
+  indici: ArrayLike<number>,
+): number[] {
+  return d.demografia[gruppo].valori.map((colonna) => {
+    let somma = 0;
+    for (let k = 0; k < indici.length; k++) somma += colonna[indici[k]];
+    return somma / Math.max(1, indici.length) / 1000;
+  });
+}
+
 export function scartoDemografico(
   d: Dataset,
   gruppo: GruppoDemografico,
   indici: ArrayLike<number>,
   media = composizioneMedia(d, gruppo),
 ): { scarti: number[]; distanza: number } {
-  const colonne = d.demografia[gruppo].valori;
-  const profilo = colonne.map((colonna) => {
-    let somma = 0;
-    for (let k = 0; k < indici.length; k++) somma += colonna[indici[k]];
-    return somma / Math.max(1, indici.length) / 1000;
-  });
+  const profilo = composizioneDi(d, gruppo, indici);
   const scarti = profilo.map((v, c) => v - media[c]);
   const distanza = scarti.reduce((s, v) => s + Math.abs(v), 0) / 2;
   return { scarti, distanza };
