@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { measure, wait, type Sample } from "@/lib/lab/measure";
 import { Hud, HudPanel, Row, fpsTone } from "@/components/lab/Hud";
 import { MapSurface, type MapHandle } from "@/components/lab/MapSurface";
 import { Stage } from "@/components/lab/Stage";
@@ -62,10 +63,6 @@ export default function T12Page() {
   const [map, setMap] = useState<MapHandle | null>(null);
   const [labelId, setLabelId] = useState<string | undefined>();
 
-  const [pannelli, setPannelli] = useState(true);
-  const [sfocatura, setSfocatura] = useState(false);
-  const [numeriVivi, setNumeriVivi] = useState(false);
-
   const { stats } = useFrameMeter();
   const trust = useRenderTrust(stats.medianMs);
 
@@ -82,16 +79,6 @@ export default function T12Page() {
     return () => {
       vivo = false;
     };
-  }, []);
-
-  useEffect(() => {
-    const suTasto = (e: KeyboardEvent) => {
-      if (e.key === "p" || e.key === "P") setPannelli((v) => !v);
-      if (e.key === "b" || e.key === "B") setSfocatura((v) => !v);
-      if (e.key === "n" || e.key === "N") setNumeriVivi((v) => !v);
-    };
-    window.addEventListener("keydown", suTasto);
-    return () => window.removeEventListener("keydown", suTasto);
   }, []);
 
   const handleReady = useCallback(
@@ -129,9 +116,6 @@ export default function T12Page() {
       map={map}
       labelId={labelId}
       onReady={handleReady}
-      pannelli={pannelli}
-      sfocatura={sfocatura}
-      numeriVivi={numeriVivi}
       stats={stats}
       trust={trust}
     />
@@ -150,9 +134,6 @@ function Scena({
   map,
   labelId,
   onReady,
-  pannelli,
-  sfocatura,
-  numeriVivi,
   stats,
   trust,
 }: {
@@ -160,14 +141,68 @@ function Scena({
   map: MapHandle | null;
   labelId: string | undefined;
   onReady: (m: MapHandle) => void;
-  pannelli: boolean;
-  sfocatura: boolean;
-  numeriVivi: boolean;
   stats: ReturnType<typeof useFrameMeter>["stats"];
   trust: ReturnType<typeof useRenderTrust>;
 }) {
   const { dataset, glossario, scena } = caricato;
   const { fase, prefetchMs } = useSequenza({ map, labelId, dati: scena });
+
+  const [pannelli, setPannelli] = useState(true);
+  const [sfocatura, setSfocatura] = useState(false);
+  const [numeriVivi, setNumeriVivi] = useState(false);
+  const [prova, setProva] = useState<Misura[] | null>(null);
+  const [inCorso, setInCorso] = useState(false);
+
+  /**
+   * La prova: quattro configurazioni misurate di seguito, senza che nessuno
+   * debba premere niente in mezzo ne' trascrivere numeri.
+   *
+   * Esiste perche' la misura a mano non e' praticabile: il browser scende a un
+   * fotogramma al secondo appena la finestra passa dietro, e una lettura presa
+   * in quel momento sembra un risultato. Qui la pagina se ne accorge da sola —
+   * un fotogramma mediano sopra i 40 ms su questa scena non e' una scheda video
+   * lenta, e' il browser che ha smesso di disegnare — e dichiara la riga non
+   * valida invece di consegnare un numero inventato.
+   */
+  const eseguiProva = useCallback(async () => {
+    if (inCorso) return;
+    setInCorso(true);
+    setProva(null);
+    const configurazioni = [
+      { nome: "scena sola", p: false, b: false, n: false },
+      { nome: "con i pannelli", p: true, b: false, n: false },
+      { nome: "+ sfocatura di fondo", p: true, b: true, n: false },
+      { nome: "+ numeri vivi", p: true, b: false, n: true },
+    ];
+    const raccolte: Misura[] = [];
+    for (const c of configurazioni) {
+      setPannelli(c.p);
+      setSfocatura(c.b);
+      setNumeriVivi(c.n);
+      // Un secondo perche' la transizione delle opacita' finisca: misurare
+      // durante la dissolvenza misurerebbe la dissolvenza.
+      await wait(1200);
+      const campione = await measure(5000);
+      raccolte.push({ nome: c.nome, campione });
+      setProva([...raccolte]);
+    }
+    setPannelli(true);
+    setSfocatura(false);
+    setNumeriVivi(false);
+    setInCorso(false);
+  }, [inCorso]);
+
+  useEffect(() => {
+    const suTasto = (e: KeyboardEvent) => {
+      if (inCorso) return;
+      if (e.key === "p" || e.key === "P") setPannelli((v) => !v);
+      if (e.key === "b" || e.key === "B") setSfocatura((v) => !v);
+      if (e.key === "n" || e.key === "N") setNumeriVivi((v) => !v);
+      if (e.key === "m" || e.key === "M") void eseguiProva();
+    };
+    window.addEventListener("keydown", suTasto);
+    return () => window.removeEventListener("keydown", suTasto);
+  }, [eseguiProva, inCorso]);
 
   const indiciFuoco = scena.indiciPerHub[scena.fuoco];
   const sintesi = useMemo(() => aggrega(dataset, indiciFuoco), [dataset, indiciFuoco]);
@@ -316,12 +351,16 @@ function Scena({
           </HudPanel>
         </div>
 
-        <HudPanel>
-          <div className="text-white/60">
-            <b className="text-white">R</b> ripeti · <b className="text-white">P</b> pannelli ·{" "}
-            <b className="text-white">B</b> sfocatura · <b className="text-white">N</b> numeri vivi
-          </div>
-        </HudPanel>
+        <div className="flex flex-col gap-2">
+          {prova ? <Risultati righe={prova} inCorso={inCorso} /> : null}
+          <HudPanel>
+            <div className="text-white/60">
+              <b className="text-white">M</b> esegui la prova (4 × 5 s) · <b className="text-white">R</b>{" "}
+              ripeti la sequenza · <b className="text-white">P</b> pannelli ·{" "}
+              <b className="text-white">B</b> sfocatura · <b className="text-white">N</b> numeri vivi
+            </div>
+          </HudPanel>
+        </div>
       </Hud>
     </main>
   );
@@ -349,4 +388,65 @@ function Vivo({ base }: { base: number }) {
     return () => cancelAnimationFrame(raf);
   }, [base]);
   return <>{percentuale(v, { segno: true })}</>;
+}
+
+type Misura = { nome: string; campione: Sample };
+
+/**
+ * I risultati della prova.
+ *
+ * La prima riga e' il riferimento: tutte le altre si leggono come differenza da
+ * quella, perche' la domanda non e' «quanti fotogrammi fa» ma «quanti ne costa
+ * questa cosa».
+ */
+function Risultati({ righe, inCorso }: { righe: Misura[]; inCorso: boolean }) {
+  const base = righe[0]?.campione.median ?? 0;
+  const valida = (c: Sample) => c.medianMs < 40 && c.frames > 60;
+
+  return (
+    <HudPanel title={inCorso ? `prova in corso — ${righe.length} di 4` : "prova completata"}>
+      <div className="grid grid-cols-[13rem_5rem_5rem_5rem_6rem] gap-x-4 leading-6">
+        <span className="text-white/40" />
+        <span className="text-right text-white/40">mediana</span>
+        <span className="text-right text-white/40">p95</span>
+        <span className="text-right text-white/40">peggiore</span>
+        <span className="text-right text-white/40">costo</span>
+        {righe.map(({ nome, campione }, i) => {
+          const buona = valida(campione);
+          const differenza = campione.median - base;
+          return (
+            <div key={nome} className="contents">
+              <span className={buona ? "text-white" : "text-red-400"}>{nome}</span>
+              <span className="text-right tabular-nums">
+                {buona ? `${campione.median.toFixed(1)}/s` : "—"}
+              </span>
+              <span className="text-right tabular-nums text-white/70">
+                {buona ? `${campione.p95Ms.toFixed(1)} ms` : "—"}
+              </span>
+              <span className="text-right tabular-nums text-white/70">
+                {buona ? `${campione.worstMs.toFixed(1)} ms` : "—"}
+              </span>
+              <span
+                className={`text-right tabular-nums ${
+                  !buona || i === 0 ? "text-white/40" : differenza < -2 ? "text-red-400" : "text-emerald-400"
+                }`}
+              >
+                {!buona
+                  ? "non valida"
+                  : i === 0
+                    ? "riferimento"
+                    : `${differenza >= 0 ? "+" : ""}${differenza.toFixed(1)}/s`}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+      {righe.some((r) => !valida(r.campione)) ? (
+        <div className="mt-2 max-w-xl text-red-400">
+          Una riga non valida significa che il browser ha smesso di disegnare: succede quando la
+          finestra passa dietro. Rimettila davanti e ripeti con M.
+        </div>
+      ) : null}
+    </HudPanel>
+  );
 }
