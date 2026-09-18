@@ -478,6 +478,16 @@ Ne è seguita una pulizia: la presenza dell'hub era legata all'appiattimento del
 compariva e spariva per effetto di cose che non lo riguardavano. Ora è dichiarata momento per
 momento, come tutte le altre grandezze della scena.
 
+**Sull'inquadratura del paese gli hub sono ingranditi, e tornano alla loro misura mentre ci si
+avvicina.** Alla misura vera sarebbero meno di un pixel, e un punto che non si vede non è un
+punto discreto, è un punto assente. Scendendo, il territorio fa il lavoro da solo e
+l'ingrandimento diventa una bugia: si riassorbe insieme al volo invece di sparire a destinazione.
+
+Quanto ingrandirli **sta nei dati della scena, non nella sequenza**, perché dipende dalla scala:
+un hub da cinquantadue chilometri a zoom nazionale è già un disco visibile e gli basta un ritocco
+(1,6×), uno da sei chilometri ha bisogno di sei volte la propria misura per esistere. Lo stesso
+numero per entrambe sarebbe sbagliato per tutte e due.
+
 La discesa passa da 6,2 a 8,2 secondi: 2,8 fino al paese, 2,0 di sosta, 3,0 fino all'area.
 
 ---

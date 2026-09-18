@@ -53,6 +53,7 @@ export default function T10Page() {
       zoomFuoco: 9.6,
       raggioStore: 2600,
       raggioHub: 6000,
+      ingrandimentoHub: 6,
       altezzaDato: 26000,
       altezzaSegnaposto: 3000,
     };

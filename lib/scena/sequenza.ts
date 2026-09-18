@@ -169,6 +169,8 @@ export type Momento = {
   svanire?: number;
   /** Presenza dell'hub, 0..1. Dichiarata sempre: non segue nient'altro. */
   hub?: number;
+  /** Quanto e' ingrandito l'hub rispetto alla sua misura, 1 = misura vera. */
+  scalaHub?: number;
 };
 
 export function useSequenza({
@@ -317,6 +319,7 @@ export function useSequenza({
         stretta = 0,
         flusso = 0,
         svanire = 0,
+        scalaHub = 1,
       } = momento;
       // L'hub ha una vita propria, dichiarata momento per momento: compare
       // durante la discesa, molto prima dei negozi, e resta li' anche quando
@@ -444,7 +447,7 @@ export function useSequenza({
           id: "hub",
           data: hubAttivi,
           diskResolution: 6,
-          radius: dati.raggioHub,
+          radius: dati.raggioHub * scalaHub,
           extruded: true,
           getPosition: (h) => h.position,
           getElevation: () => dati.altezzaSegnaposto * hub,
@@ -600,7 +603,11 @@ export function useSequenza({
     // sala vede il paese, i punti di rifornimento ci sono gia'. I negozi
     // arrivano molto dopo, ed e' quella la differenza da far sentire — prima il
     // posto, poi quello che ci succede dentro.
-    await anima(2800, (dolce) => disegna({ hub: dolce }), viva);
+    await anima(
+      2800,
+      (dolce) => disegna({ hub: dolce, scalaHub: dati.ingrandimentoHub }),
+      viva,
+    );
     await attendi(200);
     if (!viva()) return;
 
@@ -618,7 +625,23 @@ export function useSequenza({
       duration: 3000,
       essential: true,
     });
-    await attendi(3200);
+    // Gli hub tornano alla loro misura vera mentre ci si avvicina.
+    //
+    // Nell'inquadratura del paese sono ingranditi perche' alla loro misura
+    // sarebbero meno di un pixel: un punto che non si vede non e' un punto
+    // discreto, e' un punto assente. Scendendo, il territorio fa il lavoro da
+    // solo e l'ingrandimento diventa una bugia, quindi si riassorbe insieme
+    // al volo invece di sparire a destinazione.
+    await anima(
+      3000,
+      (dolce) =>
+        disegna({
+          hub: 1,
+          scalaHub: dati.ingrandimentoHub + (1 - dati.ingrandimentoHub) * dolce,
+        }),
+      viva,
+    );
+    await attendi(200);
     if (!viva()) return;
 
     /**

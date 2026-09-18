@@ -43,6 +43,16 @@ export type DatiScena = {
   raggioStore: number;
   /** Raggio degli hub: piu' largo, perche' un hub e' un'altra categoria. */
   raggioHub: number;
+  /**
+   * Quanto sono piu' grandi gli hub nell'inquadratura del paese.
+   *
+   * Sta nei dati e non nella sequenza perche' dipende dalla scala della scena:
+   * un hub da cinquantadue chilometri a zoom nazionale e' gia' un disco
+   * visibile e gli basta un ritocco, uno da sei chilometri e' meno di un pixel
+   * e senza un ingrandimento vero non esisterebbe. Lo stesso numero per
+   * entrambe sarebbe sbagliato per tutte e due.
+   */
+  ingrandimentoHub: number;
   /** Altezza massima delle colonne quando mostrano il dato, in metri. */
   altezzaDato: number;
   /** Altezza uniforme quando diventano segnaposto. */
@@ -118,6 +128,7 @@ export function costruisciScena(d: Dataset, rotte: Rotte): DatiScena {
     // imponente, e' invisibile: l'altezza va riferita all'inquadratura.
     raggioStore: 22_000,
     raggioHub: 52_000,
+    ingrandimentoHub: 1.6,
     altezzaDato: 180_000,
     altezzaSegnaposto: 22_000,
   };
