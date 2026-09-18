@@ -12,7 +12,7 @@
  * stessi identici conti che girano nella pagina.
  */
 
-import type { Dataset, GruppoDemografico } from "./schema";
+import type { Dataset, GruppoDemografico } from "./schema.ts";
 
 /* ------------------------------------------------------- il riferimento (§2.2) */
 
