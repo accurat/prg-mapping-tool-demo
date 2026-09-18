@@ -469,7 +469,16 @@ senza Alaska né Hawaii: includerle costringerebbe a inquadrare mezzo emisfero p
 stato in cui non si scenderà mai, e quello che avanza ai lati — Canada, Messico, oceano — non è
 un problema, è il contesto.
 
-La discesa passa da 6,2 a 7,6 secondi: 2,8 fino al paese, 1,4 di sosta, 3,0 fino all'area.
+Gli **hub compaiono durante questa prima tratta**, non dopo. Sono la struttura fissa del
+territorio, non un dato che emerge: quando la sala vede il paese, i punti di rifornimento ci sono
+già. I negozi arrivano molto dopo, ed è quella la differenza da far sentire — prima il posto, poi
+quello che ci succede dentro.
+
+Ne è seguita una pulizia: la presenza dell'hub era legata all'appiattimento delle celle, e quindi
+compariva e spariva per effetto di cose che non lo riguardavano. Ora è dichiarata momento per
+momento, come tutte le altre grandezze della scena.
+
+La discesa passa da 6,2 a 8,2 secondi: 2,8 fino al paese, 2,0 di sosta, 3,0 fino all'area.
 
 ---
 

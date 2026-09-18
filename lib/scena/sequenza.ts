@@ -167,7 +167,7 @@ export type Momento = {
   flusso?: number;
   /** Quanto si e' spenta la rete gia' tracciata, 0..1. */
   svanire?: number;
-  /** Presenza dell'hub, 0..1. Se assente segue l'appiattimento. */
+  /** Presenza dell'hub, 0..1. Dichiarata sempre: non segue nient'altro. */
   hub?: number;
 };
 
@@ -318,11 +318,12 @@ export function useSequenza({
         flusso = 0,
         svanire = 0,
       } = momento;
-      // L'hub segue l'appiattimento — compare quando le celle diventano
-      // segnaposto — tranne quando glielo si dice esplicitamente. Serve
-      // nell'ultimo momento della versione inclinata, dove le celle tornano
-      // alte ma l'hub deve restare dov'e': e' un luogo, non un dato.
-      const hub = momento.hub ?? piatto;
+      // L'hub ha una vita propria, dichiarata momento per momento: compare
+      // durante la discesa, molto prima dei negozi, e resta li' anche quando
+      // le celle tornano alte alla fine. Non segue nessun'altra grandezza —
+      // legarlo all'appiattimento, come faceva prima, significava farlo
+      // comparire e sparire per effetto di cose che non lo riguardano.
+      const hub = momento.hub ?? 0;
 
       // Una rampa lineare di opacita' su fondo nero non si legge come una
       // dissolvenza ma come uno spegnimento: serve una curva che rallenti
@@ -593,13 +594,20 @@ export function useSequenza({
       duration: 2800,
       essential: true,
     });
-    await attendi(3000);
+    // Gli hub compaiono **durante** questa prima tratta, non dopo.
+    //
+    // Sono la struttura fissa del territorio, non un dato che emerge: quando la
+    // sala vede il paese, i punti di rifornimento ci sono gia'. I negozi
+    // arrivano molto dopo, ed e' quella la differenza da far sentire — prima il
+    // posto, poi quello che ci succede dentro.
+    await anima(2800, (dolce) => disegna({ hub: dolce }), viva);
+    await attendi(200);
     if (!viva()) return;
 
     // La sosta. Senza, il paese sarebbe solo un fotogramma di passaggio e
     // nessuno in sala avrebbe il tempo di capire dove si sta andando.
     setFase("paese");
-    await attendi(1400);
+    await attendi(2000);
     if (!viva()) return;
 
     setFase("discesa");
@@ -629,9 +637,9 @@ export function useSequenza({
      */
     setFase("colonne");
     if (inclinazione === "discesa") {
-      await anima(2600, (t) => disegna({ salita: t }), viva);
+      await anima(2600, (t) => disegna({ salita: t, hub: 1 }), viva);
     } else {
-      await anima(2600, (t) => disegna({ salita: t, piatto: 1, hub: t }), viva);
+      await anima(2600, (t) => disegna({ salita: t, piatto: 1, hub: 1 }), viva);
     }
 
     setFase("lettura");
@@ -643,7 +651,7 @@ export function useSequenza({
     // travestita da passaggio.
     if (inclinazione === "discesa") {
       setFase("appiattimento");
-      await anima(1600, (t) => disegna({ salita: 1, piatto: t }), viva);
+      await anima(1600, (t) => disegna({ salita: 1, piatto: t, hub: 1 }), viva);
       await attendi(600);
       if (!viva()) return;
     }
@@ -668,7 +676,7 @@ export function useSequenza({
     });
     await anima(3000, (_dolce, lineare) => {
       const p = Math.min(1, lineare / 0.5);
-      disegna({ salita: 1, piatto: 1, rete: 1, stretta: p * p * (3 - 2 * p) });
+      disegna({ salita: 1, piatto: 1, rete: 1, stretta: p * p * (3 - 2 * p), hub: 1 });
     }, viva);
     if (!viva()) return;
 
@@ -677,7 +685,7 @@ export function useSequenza({
     const secondiDiFlusso = () => (performance.now() - partenza) / 1000;
     const giro = () => {
       if (!viva()) return;
-      disegna({ salita: 1, piatto: 1, rete: 1, stretta: 1, flusso: secondiDiFlusso() });
+      disegna({ salita: 1, piatto: 1, rete: 1, stretta: 1, flusso: secondiDiFlusso(), hub: 1 });
       rafFlusso.current = requestAnimationFrame(giro);
     };
     rafFlusso.current = requestAnimationFrame(giro);
