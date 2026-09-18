@@ -55,6 +55,8 @@ export default function T10Page() {
       fuoco,
       centroFuoco: hubs[fuoco].position,
       zoomFuoco: 9.6,
+      proporzioneArco: 0.45,
+      verticeMassimo: 80_000,
       raggioStore: 2600,
       raggioHub: 6000,
       ingrandimentoHub: 4.5,

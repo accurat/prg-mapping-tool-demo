@@ -56,6 +56,19 @@ export type DatiScena = {
    * entrambe sarebbe sbagliato per tutte e due.
    */
   ingrandimentoHub: number;
+  /**
+   * Quanto si alza un collegamento, in proporzione alla propria lunghezza.
+   *
+   * Sta nei dati e non nella sequenza perche' una proporzione che funziona su
+   * una stella di cinquanta chilometri e' fuori scala su una rete nazionale:
+   * con 0,45 la rotta piu' lunga del dataset si alzerebbe di 2.788 chilometri,
+   * il 44% del raggio terrestre. Un arco cosi' esce dalla sagoma del pianeta e
+   * la parte dietro l'orizzonte sparisce: a schermo resta mezzo arco sospeso
+   * nel vuoto.
+   */
+  proporzioneArco: number;
+  /** Quota massima di un collegamento, in metri: il tetto della proporzione. */
+  verticeMassimo: number;
   /** Altezza massima delle colonne quando mostrano il dato, in metri. */
   altezzaDato: number;
   /** Altezza uniforme quando diventano segnaposto. */
@@ -130,6 +143,8 @@ export function costruisciScena(d: Dataset, rotte: Rotte): DatiScena {
     ]),
     // A scala nazionale una colonna da 26 km, che a scala di citta' era
     // imponente, e' invisibile: l'altezza va riferita all'inquadratura.
+    proporzioneArco: 0.1,
+    verticeMassimo: 300_000,
     raggioStore: 22_000,
     raggioHub: 52_000,
     ingrandimentoHub: 1.6,

@@ -273,7 +273,10 @@ export function useSequenza({
       const dx = (a[0] - da[0]) * metriPerGrado * Math.cos((da[1] * Math.PI) / 180);
       const dy = (a[1] - da[1]) * metriPerGrado;
       const lunghezza = Math.hypot(dx, dy);
-      const vertice = lunghezza * 0.45 * (0.65 + store.value * 0.35);
+      const vertice = Math.min(
+        dati.verticeMassimo,
+        lunghezza * dati.proporzioneArco * (0.65 + store.value * 0.35),
+      );
 
       const path: [number, number, number][] = [];
       const timestamps: number[] = [];
@@ -289,7 +292,7 @@ export function useSequenza({
       }
       return { path, timestamps, store };
     });
-  }, [stores, hubs, dati.altezzaSegnaposto]);
+  }, [stores, hubs, dati.altezzaSegnaposto, dati.proporzioneArco, dati.verticeMassimo]);
 
   /**
    * I negozi che restano quando la scena si stringe.

@@ -369,6 +369,20 @@ Quello che esiste è un centro di distribuzione rifornito da mezzo paese. A scal
 vedrebbe un punto e delle linee che escono dall'inquadratura. La sequenza di T12 si svolge quindi
 a scala nazionale, e il momento in cui ci si stringe è su una stella, non su una città.
 
+## Gli archi non possono avere la stessa proporzione a ogni scala
+
+La quota di un collegamento era una **proporzione della sua lunghezza** — 45%, con un
+aggiustamento sul valore — e su una stella cittadina di cinquanta chilometri funzionava. Sulla
+rete vera no: la rotta più lunga del dataset misura 6.196 km, e con quella proporzione si
+alzerebbe di **2.788 chilometri, il 44% del raggio terrestre**.
+
+Un arco così esce dalla sagoma del pianeta, e la parte che passa dietro l'orizzonte sparisce: a
+schermo resta **mezzo arco sospeso nel vuoto**, che è esattamente quello che si vedeva.
+
+La proporzione sta ora nei dati della scena, con un tetto assoluto: 45% e 80 km per la scena
+cittadina, 10% e 300 km per quella nazionale. Come per l'ingrandimento degli hub, è una grandezza
+che dipende dalla scala e non può avere un valore solo.
+
 ## Il muro non può inquadrare gli Stati Uniti
 
 Conseguenza della geometria, non del codice. Il muro è largo cinque volte la propria altezza.
