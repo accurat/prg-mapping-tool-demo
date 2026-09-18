@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { measure, wait, type Sample } from "@/lib/lab/measure";
 import { Hud, HudPanel, Row, fpsTone } from "@/components/lab/Hud";
 import { MapSurface, type MapHandle } from "@/components/lab/MapSurface";
@@ -38,6 +38,18 @@ const WIDTH = 5760;
 const HEIGHT = 1080;
 const STYLE = "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json";
 const DATA = "18.09.2026";
+
+/**
+ * Quanto dura ciascuna delle otto misure.
+ *
+ * Tre secondi sono un centinaio e ottanta fotogrammi: abbondanti per una
+ * mediana e per un novantacinquesimo percentile, appena sufficienti per il
+ * peggior fotogramma, che su una finestra corta e' piu' ballerino. Si tiene
+ * corta perche' la prova intera deve stare dentro il tempo in cui qualcuno
+ * riesce a tenere la finestra davanti senza distrarsi: una misura che nessuno
+ * completa vale meno di una misura un po' piu' rumorosa.
+ */
+const DURATA_MS = 5000;
 
 /** Quando ciascuna zona e' accesa, secondo il documento dei layout. */
 const VISIBILITA: Record<Fase, { alta: boolean; sinistra: boolean; destra: boolean; striscia: boolean }> = {
@@ -165,15 +177,31 @@ function Scena({
    * valida invece di consegnare un numero inventato.
    */
   const eseguiProva = useCallback(async () => {
-    if (inCorso) return;
+    if (inCorso || !map) return;
     setInCorso(true);
     setProva(null);
+
+    /**
+     * Ogni configurazione si misura due volte: a camera ferma e a camera in
+     * movimento.
+     *
+     * Il momento che preoccupa non e' quello in cui il muro sta fermo — li' un
+     * pannello e' un rettangolo gia' composto e non costa niente — ma quello in
+     * cui **la camera si muove e l'overlay si muove insieme a lei**, cioe' la
+     * stretta finale. Misurare solo da fermi risponderebbe alla domanda facile.
+     *
+     * Il movimento e' una rotazione lenta e costante invece che la stretta
+     * vera: dura quanto serve e soprattutto e' **identico per tutte e quattro
+     * le configurazioni**, che e' l'unico modo perche' le righe siano
+     * confrontabili fra loro.
+     */
     const configurazioni = [
       { nome: "scena sola", p: false, b: false, n: false },
       { nome: "con i pannelli", p: true, b: false, n: false },
       { nome: "+ sfocatura di fondo", p: true, b: true, n: false },
       { nome: "+ numeri vivi", p: true, b: false, n: true },
     ];
+
     const raccolte: Misura[] = [];
     for (const c of configurazioni) {
       setPannelli(c.p);
@@ -181,16 +209,69 @@ function Scena({
       setNumeriVivi(c.n);
       // Un secondo perche' la transizione delle opacita' finisca: misurare
       // durante la dissolvenza misurerebbe la dissolvenza.
-      await wait(1200);
-      const campione = await measure(5000);
-      raccolte.push({ nome: c.nome, campione });
+      await wait(1000);
+      const ferma = await measure(DURATA_MS);
+
+      let raf = 0;
+      const ruota = () => {
+        map.setBearing((map.getBearing() + 0.12) % 360);
+        raf = requestAnimationFrame(ruota);
+      };
+      raf = requestAnimationFrame(ruota);
+      await wait(500);
+      const mossa = await measure(DURATA_MS);
+      cancelAnimationFrame(raf);
+      map.setBearing(0);
+
+      raccolte.push({ nome: c.nome, ferma, mossa });
       setProva([...raccolte]);
     }
+
     setPannelli(true);
     setSfocatura(false);
     setNumeriVivi(false);
     setInCorso(false);
-  }, [inCorso]);
+
+    // I numeri finiscono su file invece che sullo schermo soltanto. Chi esegue
+    // la prova deve solo tenere la finestra davanti: non deve leggere niente,
+    // non deve trascrivere niente, e soprattutto non puo' sbagliare a copiare.
+    void fetch("/api/bench", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        test: "t12",
+        quando: new Date().toISOString(),
+        durataMisuraMs: DURATA_MS,
+        rotte: scena.stores.length,
+        rows: raccolte.map((r) => ({
+          configurazione: r.nome,
+          ferma: r.ferma,
+          mossa: r.mossa,
+        })),
+      }),
+    }).catch(() => {});
+  }, [inCorso, map, scena.stores.length]);
+
+  /**
+   * Avvio automatico con `?prova=1`.
+   *
+   * La prova parte da sola quando la scena e' arrivata a regime, cioe' quando
+   * la camera ha finito di muoversi per conto suo: misurare durante la discesa
+   * misurerebbe la discesa. E' l'unico modo di eseguirla senza che qualcuno
+   * debba azzeccare il momento in cui premere un tasto.
+   */
+  const automatica = useRef(false);
+  useEffect(() => {
+    if (automatica.current || fase !== "flusso") return;
+    if (new URLSearchParams(window.location.search).get("prova") !== "1") return;
+    automatica.current = true;
+    // Un secondo e mezzo prima di cominciare: il flusso e' appena partito e i
+    // primi carichi sono ancora in dissolvenza d'ingresso. Serve anche a non
+    // far partire la misura dentro all'effetto, che e' la stessa ragione per
+    // cui la scena non si disegna mai durante il render.
+    const attesa = setTimeout(() => void eseguiProva(), 1500);
+    return () => clearTimeout(attesa);
+  }, [fase, eseguiProva]);
 
   useEffect(() => {
     const suTasto = (e: KeyboardEvent) => {
@@ -355,7 +436,7 @@ function Scena({
           {prova ? <Risultati righe={prova} inCorso={inCorso} /> : null}
           <HudPanel>
             <div className="text-white/60">
-              <b className="text-white">M</b> esegui la prova (4 × 5 s) · <b className="text-white">R</b>{" "}
+              <b className="text-white">M</b> esegui la prova (8 × 5 s) · <b className="text-white">R</b>{" "}
               ripeti la sequenza · <b className="text-white">P</b> pannelli ·{" "}
               <b className="text-white">B</b> sfocatura · <b className="text-white">N</b> numeri vivi
             </div>
@@ -390,7 +471,7 @@ function Vivo({ base }: { base: number }) {
   return <>{percentuale(v, { segno: true })}</>;
 }
 
-type Misura = { nome: string; campione: Sample };
+type Misura = { nome: string; ferma: Sample; mossa: Sample };
 
 /**
  * I risultati della prova.
@@ -400,48 +481,66 @@ type Misura = { nome: string; campione: Sample };
  * questa cosa».
  */
 function Risultati({ righe, inCorso }: { righe: Misura[]; inCorso: boolean }) {
-  const base = righe[0]?.campione.median ?? 0;
   const valida = (c: Sample) => c.medianMs < 40 && c.frames > 60;
+  const base = righe[0];
 
   return (
     <HudPanel title={inCorso ? `prova in corso — ${righe.length} di 4` : "prova completata"}>
-      <div className="grid grid-cols-[13rem_5rem_5rem_5rem_6rem] gap-x-4 leading-6">
-        <span className="text-white/40" />
+      <div className="grid grid-cols-[12rem_5rem_5rem_6rem_5rem_5rem_6rem] gap-x-4 leading-6">
+        <span />
+        <span className="col-span-3 border-b border-white/10 text-center text-white/40">
+          camera ferma
+        </span>
+        <span className="col-span-3 border-b border-white/10 text-center text-white/40">
+          camera in movimento
+        </span>
+        <span />
         <span className="text-right text-white/40">mediana</span>
         <span className="text-right text-white/40">p95</span>
         <span className="text-right text-white/40">peggiore</span>
-        <span className="text-right text-white/40">costo</span>
-        {righe.map(({ nome, campione }, i) => {
-          const buona = valida(campione);
-          const differenza = campione.median - base;
-          return (
-            <div key={nome} className="contents">
-              <span className={buona ? "text-white" : "text-red-400"}>{nome}</span>
-              <span className="text-right tabular-nums">
-                {buona ? `${campione.median.toFixed(1)}/s` : "—"}
-              </span>
-              <span className="text-right tabular-nums text-white/70">
-                {buona ? `${campione.p95Ms.toFixed(1)} ms` : "—"}
-              </span>
-              <span className="text-right tabular-nums text-white/70">
-                {buona ? `${campione.worstMs.toFixed(1)} ms` : "—"}
-              </span>
-              <span
-                className={`text-right tabular-nums ${
-                  !buona || i === 0 ? "text-white/40" : differenza < -2 ? "text-red-400" : "text-emerald-400"
-                }`}
-              >
-                {!buona
-                  ? "non valida"
-                  : i === 0
-                    ? "riferimento"
-                    : `${differenza >= 0 ? "+" : ""}${differenza.toFixed(1)}/s`}
-              </span>
-            </div>
-          );
-        })}
+        <span className="text-right text-white/40">mediana</span>
+        <span className="text-right text-white/40">p95</span>
+        <span className="text-right text-white/40">peggiore</span>
+
+        {righe.map((r, i) => (
+          <div key={r.nome} className="contents">
+            <span className={valida(r.ferma) && valida(r.mossa) ? "text-white" : "text-red-400"}>
+              {r.nome}
+            </span>
+            {[r.ferma, r.mossa].map((c, k) => {
+              const buona = valida(c);
+              const riferimento = k === 0 ? base?.ferma : base?.mossa;
+              // Il costo si legge sul peggior fotogramma, non sulla mediana: a
+              // sessanta fotogrammi al secondo la mediana e' bloccata dal
+              // monitor e non puo' peggiorare finche' c'e' margine. Quello che
+              // si vede in sala e' l'intoppo.
+              const peggioramento = riferimento ? c.worstMs - riferimento.worstMs : 0;
+              return (
+                <div key={k} className="contents">
+                  <span className="text-right tabular-nums">
+                    {buona ? `${c.median.toFixed(1)}/s` : "—"}
+                  </span>
+                  <span className="text-right tabular-nums text-white/70">
+                    {buona ? `${c.p95Ms.toFixed(1)} ms` : "—"}
+                  </span>
+                  <span
+                    className={`text-right tabular-nums ${
+                      !buona
+                        ? "text-red-400"
+                        : i > 0 && peggioramento > 8
+                          ? "text-amber-400"
+                          : "text-white/70"
+                    }`}
+                  >
+                    {buona ? `${c.worstMs.toFixed(1)} ms` : "non valida"}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        ))}
       </div>
-      {righe.some((r) => !valida(r.campione)) ? (
+      {righe.some((r) => !valida(r.ferma) || !valida(r.mossa)) ? (
         <div className="mt-2 max-w-xl text-red-400">
           Una riga non valida significa che il browser ha smesso di disegnare: succede quando la
           finestra passa dietro. Rimettila davanti e ripeti con M.
