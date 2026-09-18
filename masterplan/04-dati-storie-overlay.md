@@ -448,6 +448,31 @@ video integrata.
 
 ---
 
+# La sosta sul paese
+
+La discesa non va più dal globo all'area in un volo solo: si ferma per un attimo su
+**un'inquadratura che contiene tutta la parte continentale degli Stati Uniti**, poi riparte.
+
+Due dettagli non ovvi:
+
+- **L'inquadratura la calcola la mappa**, con `cameraForBounds`, non noi. È lei a sapere quanto è
+  grande la propria tela e come si traduce uno zoom in metri per pixel; una formula nostra
+  sarebbe una seconda versione della stessa cosa, con una costante sbagliata prima o poi.
+- **La sosta va precaricata a parte.** Il corridoio del precaricamento è una retta fra due zoom
+  sullo stesso centro: una fermata su un altro centro non ci cade dentro, e quelle tessere
+  arriverebbero durante il volo invece che prima. `prefetchDescent` accetta ora delle tappe fuori
+  corridoio. Il precaricamento passa da 4 a 5,4 secondi a cache fredda.
+
+Il paese si guarda **a picco anche quando il resto della discesa sarà inclinato**: serve a
+riconoscere una forma, e una forma vista di scorcio è un'altra forma. Confini presi larghi e
+senza Alaska né Hawaii: includerle costringerebbe a inquadrare mezzo emisfero per mostrare uno
+stato in cui non si scenderà mai, e quello che avanza ai lati — Canada, Messico, oceano — non è
+un problema, è il contesto.
+
+La discesa passa da 6,2 a 7,6 secondi: 2,8 fino al paese, 1,4 di sosta, 3,0 fino all'area.
+
+---
+
 # L'inclinazione spostata (T10, tasto `I`)
 
 Prova nata da un'osservazione: **l'altezza si legge inclinati, la geografia si legge dall'alto**,

@@ -57,6 +57,8 @@ const VISIBILITA: Record<Fase, { alta: boolean; sinistra: boolean; destra: boole
   // M2: titolo e data solo in apertura, la striscia compare a discesa finita.
   preparazione: { alta: true, sinistra: false, destra: false, striscia: false },
   discesa: { alta: true, sinistra: false, destra: false, striscia: false },
+  // La sosta sul paese e' ancora apertura: titolo e data restano, il resto no.
+  paese: { alta: true, sinistra: false, destra: false, striscia: false },
   colonne: { alta: false, sinistra: false, destra: false, striscia: true },
   lettura: { alta: false, sinistra: false, destra: false, striscia: true },
   appiattimento: { alta: false, sinistra: false, destra: false, striscia: true },

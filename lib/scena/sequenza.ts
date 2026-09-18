@@ -33,6 +33,20 @@ import type { DatiScena } from "./dati";
 export const START_ZOOM = 0.4;
 
 /**
+ * I confini della parte continentale degli Stati Uniti.
+ *
+ * Volutamente approssimati, e volutamente senza Alaska, Hawaii e territori: la
+ * sosta serve a far riconoscere la forma del paese, e includere l'Alaska
+ * costringerebbe a inquadrare mezzo emisfero per mostrare uno stato in cui non
+ * si scendera' mai. Quello che avanza ai lati — Canada, Messico, oceano — non
+ * e' un problema: e' il contesto.
+ */
+const BORDI_PAESE: [[number, number], [number, number]] = [
+  [-125.0, 24.4],
+  [-66.9, 49.4],
+];
+
+/**
  * Dove sta l'inclinazione nella sequenza.
  *
  * `discesa` e' l'ordine originale: si arriva inclinati, si guarda il rilievo in
@@ -49,6 +63,7 @@ export type Fase =
   | "attesa"
   | "preparazione"
   | "discesa"
+  | "paese"
   | "colonne"
   | "lettura"
   | "appiattimento"
@@ -73,6 +88,7 @@ export const NOMI_FASE: Record<Fase, string> = {
   attesa: "in attesa",
   preparazione: "precaricamento del corridoio",
   discesa: "discesa dal globo",
+  paese: "il paese intero",
   colonne: "il potenziale emerge",
   lettura: "lettura",
   appiattimento: "da dato a luogo",
@@ -516,11 +532,38 @@ export function useSequenza({
     const pitchDiscesa = inclinazione === "discesa" ? dati.pitchArrivo : 0;
     const pitchFuoco = inclinazione === "discesa" ? 0 : dati.pitchArrivo;
 
+    /**
+     * L'inquadratura che contiene il paese.
+     *
+     * Chiesta alla mappa invece che calcolata: e' lei a sapere quanto e' grande
+     * la sua tela e come si traduce uno zoom in metri per pixel. Un calcolo
+     * nostro sarebbe una seconda versione della stessa formula, con una
+     * costante sbagliata prima o poi.
+     */
+    const inquadratura = m.cameraForBounds(BORDI_PAESE, { padding: 80 });
+    const vistaPaese = {
+      center: (inquadratura?.center
+        ? [
+            "lng" in inquadratura.center
+              ? inquadratura.center.lng
+              : (inquadratura.center as [number, number])[0],
+            "lat" in inquadratura.center
+              ? inquadratura.center.lat
+              : (inquadratura.center as [number, number])[1],
+          ]
+        : [-96, 37.5]) as [number, number],
+      zoom: inquadratura?.zoom ?? 3.2,
+    };
+
     setFase("preparazione");
     m.jumpTo({ center: dati.centro, zoom: START_ZOOM, pitch: 0, bearing: 0 });
     disegna({});
     const rapporto = await prefetchDescent(m, {
       center: dati.centro,
+      // La sosta sul paese non cade nel corridoio, che e' una retta sul centro
+      // di arrivo: va percorsa a parte o le sue tessere arriverebbero durante
+      // il volo.
+      tappe: [{ ...vistaPaese, pitch: 0 }],
       fromZoom: START_ZOOM,
       toZoom: dati.zoomArrivo,
       // Il corridoio si precarica con l'inclinazione con cui lo si percorrera'
@@ -541,13 +584,33 @@ export function useSequenza({
     // non con archi: l'ArcLayer sotto vista sferica non viene disegnato.
     setFase("discesa");
     m.flyTo({
+      ...vistaPaese,
+      // Il paese si guarda a picco anche quando il resto della discesa sara'
+      // inclinato: e' un'inquadratura che serve a riconoscere una forma, e una
+      // forma vista di scorcio e' un'altra forma.
+      pitch: 0,
+      bearing: 0,
+      duration: 2800,
+      essential: true,
+    });
+    await attendi(3000);
+    if (!viva()) return;
+
+    // La sosta. Senza, il paese sarebbe solo un fotogramma di passaggio e
+    // nessuno in sala avrebbe il tempo di capire dove si sta andando.
+    setFase("paese");
+    await attendi(1400);
+    if (!viva()) return;
+
+    setFase("discesa");
+    m.flyTo({
       center: dati.centro,
       zoom: dati.zoomArrivo,
       pitch: pitchDiscesa,
-      duration: 6000,
+      duration: 3000,
       essential: true,
     });
-    await attendi(6200);
+    await attendi(3200);
     if (!viva()) return;
 
     /**

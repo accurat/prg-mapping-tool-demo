@@ -75,6 +75,7 @@ export async function prefetchDescent(
     fromZoom,
     toZoom,
     toPitch,
+    tappe = [],
     steps = 8,
     pitchMargin = 10,
     stepTimeoutMs = 4000,
@@ -83,6 +84,15 @@ export async function prefetchDescent(
     fromZoom: number;
     toZoom: number;
     toPitch: number;
+    /**
+     * Inquadrature fuori dal corridoio che il volo attraversera' comunque.
+     *
+     * Il corridoio e' una retta fra due zoom sullo stesso centro: una sosta
+     * intermedia su un altro centro non ci cade dentro, e quelle tessere
+     * arriverebbero durante il volo invece che prima. Si percorrono anche
+     * quelle, con lo stesso metodo.
+     */
+    tappe?: { center: [number, number]; zoom: number; pitch: number }[];
     steps?: number;
     pitchMargin?: number;
     stepTimeoutMs?: number;
@@ -90,6 +100,12 @@ export async function prefetchDescent(
 ): Promise<PrefetchReport> {
   const started = performance.now();
   let timedOut = 0;
+
+  for (const tappa of tappe) {
+    map.jumpTo({ ...tappa, bearing: 0 });
+    await nextFrames(2);
+    if (!(await settle(map, stepTimeoutMs))) timedOut += 1;
+  }
 
   for (let i = 0; i < steps; i++) {
     const t = steps === 1 ? 1 : i / (steps - 1);
@@ -112,5 +128,5 @@ export async function prefetchDescent(
   await nextFrames(2);
   await settle(map, stepTimeoutMs);
 
-  return { steps, timedOut, durationMs: performance.now() - started };
+  return { steps: steps + tappe.length, timedOut, durationMs: performance.now() - started };
 }
