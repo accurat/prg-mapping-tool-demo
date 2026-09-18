@@ -457,7 +457,7 @@ metteva a picco proprio quando si stringeva su un'area.
 Con `I` i due ordini si confrontano dall'inizio. Nell'ordine invertito:
 
 1. si arriva **a picco**: il paese si legge come una carta, e a parlare è il colore;
-2. le celle emergono, si appiattiscono, la rete si accende — tutto visto dall'alto, dove la
+2. le celle **compaiono già basse** e la rete si accende — tutto visto dall'alto, dove la
    struttura a stella si legge molto meglio che in prospettiva, perché gli archi non si
    accavallano e le stelle lontane non si schiacciano l'una sull'altra;
 3. la scena **si stringe su una stella e si inclina**;
@@ -472,6 +472,13 @@ cosa per volta.
 
 La rete svanisce più in fretta di quanto le colonne salgano, così non si accavallano: si legge un
 cambio di argomento e non una confusione.
+
+**Le celle non crescono, in questo ordine.** A picco un'altezza non esiste: farle salire lo stesso
+vorrebbe dire animare qualcosa che nessuno può vedere, e far credere per due secondi che stia
+succedendo qualcosa che non succede. Compaiono e basta, e a entrare in scena è il colore — la
+fase si chiama «il territorio si popola» e non «il potenziale emerge», perché è un'altra cosa.
+Per la stessa ragione sparisce la fase di appiattimento: non c'è niente da appiattire, e una fase
+che non sposta niente è una pausa travestita da passaggio.
 
 ## Un difetto trovato per strada: due sequenze in corso insieme
 

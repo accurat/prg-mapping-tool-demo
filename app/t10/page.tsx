@@ -8,7 +8,7 @@ import { makeStoreNetwork } from "@/lib/lab/network";
 import { useFrameMeter } from "@/lib/lab/useFrameMeter";
 import { useRenderTrust } from "@/lib/lab/useRenderTrust";
 import type { DatiScena } from "@/lib/scena/dati";
-import { NOMI_FASE, START_ZOOM, useSequenza, type Inclinazione } from "@/lib/scena/sequenza";
+import { START_ZOOM, nomeFase, useSequenza, type Inclinazione } from "@/lib/scena/sequenza";
 
 /**
  * T10 — la sequenza completa, su dati sintetici.
@@ -102,7 +102,7 @@ export default function T10Page() {
       <Hud>
         <div className="flex items-start gap-3">
           <HudPanel title="T10 — sequenza completa">
-            <Row label="momento" value={NOMI_FASE[fase]} tone="good" />
+            <Row label="momento" value={nomeFase(fase, inclinazione)} tone="good" />
             <Row
               label="inclinazione"
               value={inclinazione === "discesa" ? "nella discesa" : "nella stretta"}

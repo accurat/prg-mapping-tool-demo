@@ -57,6 +57,18 @@ export type Fase =
   | "flusso"
   | "rilievo";
 
+/**
+ * Il nome del momento, che dipende da dove sta l'inclinazione.
+ *
+ * Non e' cosmesi: nell'ordine invertito la stessa fase fa un'altra cosa — le
+ * celle compaiono invece di emergere — e chiamarla «il potenziale emerge»
+ * significherebbe annunciare qualcosa che non si vede.
+ */
+export function nomeFase(fase: Fase, inclinazione: Inclinazione): string {
+  if (inclinazione === "fuoco" && fase === "colonne") return "il territorio si popola";
+  return NOMI_FASE[fase];
+}
+
 export const NOMI_FASE: Record<Fase, string> = {
   attesa: "in attesa",
   preparazione: "precaricamento del corridoio",
@@ -538,20 +550,43 @@ export function useSequenza({
     await attendi(6200);
     if (!viva()) return;
 
+    /**
+     * Le celle entrano in scena.
+     *
+     * Nell'ordine originale **crescono**: la camera e' inclinata, l'altezza si
+     * vede, e vederla salire e' il momento in cui il rilievo dice quanto vale
+     * un posto.
+     *
+     * Nell'ordine invertito la camera e' a picco, dove un'altezza non esiste:
+     * farle crescere lo stesso significherebbe animare qualcosa che nessuno
+     * puo' vedere, e far credere per due secondi che stia succedendo qualcosa
+     * che non succede. Quindi **compaiono gia' basse**, e a entrare in scena e'
+     * il colore. L'altezza arriva alla fine, quando c'e' un'angolazione da cui
+     * leggerla.
+     */
     setFase("colonne");
-    await anima(2600, (t) => disegna({ salita: t }), viva);
+    if (inclinazione === "discesa") {
+      await anima(2600, (t) => disegna({ salita: t }), viva);
+    } else {
+      await anima(2600, (t) => disegna({ salita: t, piatto: 1, hub: t }), viva);
+    }
 
     setFase("lettura");
     await attendi(2200);
     if (!viva()) return;
 
-    setFase("appiattimento");
-    await anima(1600, (t) => disegna({ salita: 1, piatto: t }), viva);
+    // L'appiattimento esiste solo nell'ordine originale: nell'altro le celle
+    // sono gia' segnaposto, e una fase che non sposta niente e' una pausa
+    // travestita da passaggio.
+    if (inclinazione === "discesa") {
+      setFase("appiattimento");
+      await anima(1600, (t) => disegna({ salita: 1, piatto: t }), viva);
+      await attendi(600);
+      if (!viva()) return;
+    }
 
-    await attendi(600);
-    if (!viva()) return;
     setFase("archi");
-    await anima(2600, (t) => disegna({ salita: 1, piatto: 1, rete: t }), viva);
+    await anima(2600, (t) => disegna({ salita: 1, piatto: 1, rete: t, hub: 1 }), viva);
 
     await attendi(1800);
     if (!viva()) return;
