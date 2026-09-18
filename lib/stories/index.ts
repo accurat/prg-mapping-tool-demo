@@ -15,7 +15,7 @@
 import type { Dataset } from "../data/schema.ts";
 import { aggrega } from "../data/metrics.ts";
 import { ARCHETIPI } from "./archetipi.ts";
-import { costruisciContesto } from "./contesto.ts";
+import { costruisciContesto, type Contesto } from "./contesto.ts";
 import { componiFrase, componiLuogo } from "./frasi.ts";
 import {
   CONFIGURAZIONE_PREDEFINITA,
@@ -29,7 +29,7 @@ import {
 } from "./tipi.ts";
 
 export * from "./tipi.ts";
-export { costruisciContesto } from "./contesto.ts";
+export { costruisciContesto, type Contesto } from "./contesto.ts";
 
 /** Distanza in chilometri fra due punti sulla sfera. */
 export function distanzaKm(a: [number, number], b: [number, number]): number {
@@ -130,7 +130,20 @@ function assegnaPunteggi(candidate: Candidata[], peso: number): number[] {
 export function calcolaStorie(
   d: Dataset,
   opzioni: Partial<Configurazione> = {},
-): { storie: Storia[]; candidate: number; perArchetipo: Record<string, number> } {
+): {
+  storie: Storia[];
+  candidate: number;
+  perArchetipo: Record<string, number>;
+  /**
+   * Il contesto viene restituito insieme alle storie.
+   *
+   * Contiene le celle del rilievo e i riferimenti nazionali, che chi mostra le
+   * storie deve comunque avere — per le miniature e per i totali in testa. Se
+   * dovesse ricostruirselo pagherebbe una seconda volta l'aggregazione di
+   * diecimila negozi per ottenere esattamente lo stesso risultato.
+   */
+  contesto: Contesto;
+} {
   const config: Configurazione = {
     ...CONFIGURAZIONE_PREDEFINITA,
     ...opzioni,
@@ -191,7 +204,7 @@ export function calcolaStorie(
     });
   }
 
-  return { storie: scelte, candidate: candidate.length, perArchetipo };
+  return { storie: scelte, candidate: candidate.length, perArchetipo, contesto: ctx };
 }
 
 function unisci(aree: Unita[]): Int32Array {

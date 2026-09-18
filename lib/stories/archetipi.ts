@@ -12,7 +12,7 @@
  */
 
 import { quadrante, variazioneAnnua } from "../data/metrics.ts";
-import { valuta, negozi as scriviNegozi, percentuale } from "../format.ts";
+import { conta, valuta, percentuale } from "../format.ts";
 import {
   distanzaDemografica,
   percentile,
@@ -37,7 +37,7 @@ function numeriDiBase(u: Unita): Numero[] {
       valore: u.sintesi.crescita === null ? "—" : percentuale(u.sintesi.crescita, { segno: true }),
       principale: true,
     },
-    { etichetta: "negozi", valore: scriviNegozi(u.sintesi.negozi) },
+    { etichetta: "negozi", valore: conta(u.sintesi.negozi) },
     { etichetta: "sotto il riferimento", valore: `${u.sintesi.sotto} su ${u.sintesi.misurabili}` },
   ];
 }
@@ -345,7 +345,7 @@ function concentrazione(ctx: Contesto): Candidata[] {
           principale: true,
         },
         { etichetta: "valore", valore: valuta(cumulato) },
-        { etichetta: "negozi", valore: scriviNegozi(scelte.reduce((s, u) => s + u.sintesi.negozi, 0)) },
+        { etichetta: "negozi", valore: conta(scelte.reduce((s, u) => s + u.sintesi.negozi, 0)) },
       ],
       frase: {
         quante: `${quante} stati`,

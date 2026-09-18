@@ -12,6 +12,7 @@ const TESTS = [
   { id: "t8", title: "Tre schermi", desc: "Un canvas da 5760 contro tre da 1920", ready: false },
   { id: "t9", title: "Leggibilita'", desc: "Dimensioni minime a dodici metri", ready: true },
   { id: "t10", title: "Sequenza completa", desc: "Discesa, colonne, appiattimento, rete a stella", ready: true },
+  { id: "t11", title: "Le storie", desc: "Estratte dai dati veri, deterministiche, con la regia per la scena", ready: true },
 ];
 
 export default function Home() {

@@ -305,6 +305,30 @@ Cinque archetipi su sette, 163 candidate, otto scelte:
 | 7 | Campo libero | Austin, Texas |
 | 8 | Il pubblico che non torna | Carthage, Mississippi |
 
+## La pagina
+
+`/t11`, responsive, schede verticali scorrevoli in orizzontale. Non è una superficie del
+prodotto — le storie del prodotto vivono sul tablet e sul muro — ma lo strumento per rispondere a
+due domande che nessuna verifica automatica risolve: **le frasi si capiscono**, e **la lista è
+varia**.
+
+Per questo mostra anche quello che una vista di prodotto nasconderebbe: quante candidate ha
+prodotto ogni criterio prima dei filtri, quanto è costato il calcolo, e la regia che ogni storia
+consegnerebbe alla scena — centro, zoom, strato. Vedere la regia adesso, prima che esista un muro
+da comandare, è il modo di accorgersi che una storia atterrerebbe da un'altezza sbagliata: è così
+che è saltato fuori che l'inquadratura, misurata sui centri delle aree invece che sui negozi,
+scendeva a zoom 11 su una cella da 60 km.
+
+La miniatura è un profilo del rilievo della regione, con evidenziate le celle della storia. Dice
+una cosa che il testo non dice: **quanto quell'area spicca rispetto a quello che le sta intorno**.
+Odessa esce come una barra alta e isolata, Austin come una barra alta accanto a una più alta — e
+sono due storie diverse che nessun numero comunica altrettanto in fretta.
+
+Un difetto trovato guardandola: l'evidenziazione della concentrazione non compariva, perché quella
+storia parla di stati mentre il profilo è fatto di celle, e due livelli di aggregazione non hanno
+chiavi in comune. L'appartenenza ora si decide sui negozi, che sono la stessa cosa a qualsiasi
+livello la si guardi.
+
 ## Cosa resta da decidere
 
 - **«I gemelli divergenti» produce 26 candidate e non entra mai negli otto.** È l'archetipo che
