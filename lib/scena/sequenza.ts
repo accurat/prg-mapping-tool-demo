@@ -224,8 +224,6 @@ export type Momento = {
   svanire?: number;
   /** Presenza dell'hub, 0..1. Dichiarata sempre: non segue nient'altro. */
   hub?: number;
-  /** Quanto e' ingrandito l'hub rispetto alla sua misura, 1 = misura vera. */
-  scalaHub?: number;
   /** Quanto e' ingrandito il raggio delle colonne, 1 = misura vera. */
   scalaStore?: number;
   /** Opacita' delle etichette degli hub, 0..1. Vivono solo sull'inquadratura del paese. */
@@ -424,7 +422,6 @@ export function useSequenza({
         stretta = 0,
         flusso = 0,
         svanire = 0,
-        scalaHub = 1,
         scalaStore = 1,
         etichette = 0,
         globo = 0,
@@ -579,7 +576,7 @@ export function useSequenza({
           id: "hub",
           data: hubAttivi,
           diskResolution: 6,
-          radius: dati.raggioHub * scalaHub,
+          radius: dati.raggioHub,
           extruded: true,
           getPosition: (h) => h.position,
           getElevation: () => dati.altezzaSegnaposto * hub,
@@ -895,7 +892,6 @@ export function useSequenza({
       (dolce, lineare) =>
         disegna({
           hub: dolce,
-          scalaHub: dati.ingrandimentoHub,
           // L'apertura se ne va nella prima meta' della discesa: da qui in poi
           // in campo restano solo dati veri.
           globo: Math.max(0, 1 - lineare / 0.5),
@@ -909,12 +905,8 @@ export function useSequenza({
     // La sosta. Senza, il paese sarebbe solo un fotogramma di passaggio e
     // nessuno in sala avrebbe il tempo di capire dove si sta andando.
     setFase("paese");
-    await anima(
-      700,
-      (dolce) => disegna({ hub: 1, scalaHub: dati.ingrandimentoHub, etichette: dolce }),
-      viva,
-    );
-    await attendi(1300);
+    await anima(500, (dolce) => disegna({ hub: 1, etichette: dolce }), viva);
+    await attendi(700);
     if (!viva()) return;
 
     if (!unVoloSolo) {
@@ -952,7 +944,6 @@ export function useSequenza({
             : Math.max(0, Math.min(1, (m.getZoom() - zoomPartenza) / arco));
         disegna({
           hub: 1,
-          scalaHub: dati.ingrandimentoHub + (1 - dati.ingrandimentoHub) * avanzamento,
           // Le etichette se ne vanno per prime: servivano a distinguere dei
           // punti lontani, e appena il volo comincia non sono piu' quello che
           // si sta guardando.
@@ -1037,8 +1028,9 @@ export function useSequenza({
     const arcoStretta = (inquadraturaFuoco?.zoom ?? dati.zoomFuoco) - zoomStretta;
     await anima(3000, (_dolce, lineare) => {
       const p = Math.min(1, lineare / 0.5);
-      // I raggi si riassorbono seguendo lo zoom, non il tempo: e' la stessa
-      // ragione per cui lo fanno gli hub scendendo sul paese.
+      // Le colonne si riassorbono seguendo lo zoom, non il tempo: una curva
+      // temporale non puo' coincidere con il terreno che si allarga sotto,
+      // perche' il volo non attraversa gli zoom in modo uniforme.
       const avvicinamento =
         arcoStretta === 0
           ? 1
@@ -1050,7 +1042,6 @@ export function useSequenza({
         rete: 1,
         stretta: p * p * (3 - 2 * p),
         hub: 1,
-        scalaHub: raggi,
         scalaStore: raggi,
       });
     }, viva);
@@ -1068,7 +1059,6 @@ export function useSequenza({
         stretta: 1,
         flusso: secondiDiFlusso(),
         hub: 1,
-        scalaHub: dati.restringimentoFuoco,
         scalaStore: dati.restringimentoFuoco,
       });
       rafFlusso.current = requestAnimationFrame(giro);
@@ -1106,7 +1096,6 @@ export function useSequenza({
         flusso: secondiDiFlusso(),
         svanire: Math.min(1, lineare / 0.55),
         hub: 1,
-        scalaHub: dati.restringimentoFuoco,
         scalaStore: dati.restringimentoFuoco,
       });
     }, viva);
@@ -1118,7 +1107,6 @@ export function useSequenza({
       stretta: 1,
       svanire: 1,
       hub: 1,
-      scalaHub: dati.restringimentoFuoco,
       scalaStore: dati.restringimentoFuoco,
     });
 

@@ -55,16 +55,6 @@ export type DatiScena = {
   /** Raggio degli hub: piu' largo, perche' un hub e' un'altra categoria. */
   raggioHub: number;
   /**
-   * Quanto sono piu' grandi gli hub nell'inquadratura del paese.
-   *
-   * Sta nei dati e non nella sequenza perche' dipende dalla scala della scena:
-   * un hub da cinquantadue chilometri a zoom nazionale e' gia' un disco
-   * visibile e gli basta un ritocco, uno da sei chilometri e' meno di un pixel
-   * e senza un ingrandimento vero non esisterebbe. Lo stesso numero per
-   * entrambe sarebbe sbagliato per tutte e due.
-   */
-  ingrandimentoHub: number;
-  /**
    * Quanto si alza un collegamento, in proporzione alla propria lunghezza.
    *
    * Sta nei dati e non nella sequenza perche' una proporzione che funziona su
@@ -78,12 +68,14 @@ export type DatiScena = {
   /** Quota massima di un collegamento, in metri: il tetto della proporzione. */
   verticeMassimo: number;
   /**
-   * Quanto si stringono i raggi di colonne e hub quando la scena si chiude.
+   * Quanto si stringono le colonne quando la scena si chiude.
    *
    * Le stesse misure non possono servire due scale separate da un fattore
-   * trenta: un raggio che a vista nazionale e' un punto visibile, da vicino e'
-   * un disco che copre la citta' sotto. Si riassorbe seguendo lo zoom, come
-   * l'ingrandimento degli hub sull'inquadratura del paese.
+   * dieci: un raggio che a vista nazionale e' un punto visibile, da vicino e'
+   * un disco che copre la citta' sotto. Si riassorbe seguendo lo zoom del volo.
+   *
+   * Gli hub non lo usano: restano della loro misura a ogni scala, perche' sono
+   * pochi e la loro dimensione dice di che categoria sono, non quanto valgono.
    */
   restringimentoFuoco: number;
   /** Altezza massima delle colonne quando mostrano il dato, in metri. */
@@ -218,7 +210,6 @@ export function costruisciScena(d: Dataset, rotte: Rotte): DatiScena {
     verticeMassimo: 300_000,
     raggioStore: 22_000,
     raggioHub: 52_000,
-    ingrandimentoHub: 1.6,
     // Tarati sull'inquadratura finale misurata, non stimati: a 547 metri per
     // pixel un negozio resta largo una quindicina di pixel e la colonna piu'
     // alta ne misura duecentocinquanta, cioe' un quarto dell'altezza del muro.
