@@ -569,29 +569,28 @@ export function useSequenza({
         new TripsLayer<Percorso>({
           id: "rete",
           /**
-           * I percorsi si tolgono dai dati ai due estremi, non si rendono
-           * invisibili.
+           * I percorsi restano **sempre nei dati**, e a nasconderli e' il
+           * tempo: non si tolgono finche' non se ne vanno per davvero.
            *
-           * In coda perche' una rete del tutto trasparente continuerebbe a
-           * scrivere nel buffer di profondita' e a nascondere le colonne che le
-           * passano davanti.
+           * Ieri li toglievo anche prima che la rete si accendesse, per
+           * aggirare un difetto di precisione. Era un errore, e ha introdotto
+           * qualcosa di peggio: la prima volta che uno strato riceve dei dati,
+           * la scheda video deve costruirne gli attributi — qui cinquecento
+           * percorsi da quarantaquattro punti — e quel lavoro sta dentro un
+           * fotogramma solo. Cadendo all'istante in cui l'animazione parte, il
+           * tempo avanza mentre il fotogramma e' bloccato, e quando il disegno
+           * riprende gli archi sono gia' a meta': **compaiono gia' fatti**.
            *
-           * In testa per una ragione meno ovvia, che e' costata un'indagine.
-           * TripsLayer decide se disegnare un punto dalla quantita'
-           * `(istante - suo tempo) / lunghezza della scia`, e la scarta se
-           * risulta negativa. Qui la scia e' lunga quanto tutta la sequenza —
-           * serve a non far svanire mai i collegamenti gia' tracciati — quindi
-           * a istante zero quella quantita' vale qualche decimillesimo sotto lo
-           * zero: dentro l'errore del calcolo a virgola mobile. Alcuni
-           * frammenti finiscono dalla parte sbagliata dello zero e vengono
-           * disegnati **a piena opacita'**, molto prima del momento in cui la
-           * rete dovrebbe accendersi.
+           * E' la stessa ragione per cui le colonne esistono fin dal
+           * precaricamento a opacita' zero. Il difetto di precisione si evita
+           * invece facendo partire il tempo **sotto** il primo istante utile,
+           * con un margine largo, invece che a filo dello zero.
            *
-           * Si vedeva come una manciata di mezzi archi azzurri fermi sulla
-           * mappa fin dalla discesa, e a leggere il codice sembravano
-           * impossibili: il valore che li governa era zero.
+           * In coda si tolgono ancora, ma per un altro motivo: una geometria
+           * del tutto trasparente continua a scrivere nel buffer di
+           * profondita' e nasconderebbe le colonne che le passano davanti.
            */
-          data: rete <= 0.002 || svanire >= 0.999 ? [] : percorsiAttivi,
+          data: svanire >= 0.999 ? [] : percorsiAttivi,
           getPath: (p) => p.path,
           getTimestamps: (p) => p.timestamps,
           getColor: (p) => {
@@ -613,7 +612,9 @@ export function useSequenza({
            */
           fadeTrail: false,
           trailLength: finePercorsi * 1.05,
-          currentTime: rete * finePercorsi,
+          // Due unita' sotto il primo istante utile: a rete zero non si disegna
+          // niente, e il confronto sta lontano dallo zero invece che a filo.
+          currentTime: rete * finePercorsi - 2,
           updateTriggers: { getColor: [stretta, svanire] },
           ...under(labelId),
         }),
@@ -662,13 +663,10 @@ export function useSequenza({
 
         new TripsLayer<ArcoGlobo>({
           id: "globo-archi",
-          // Anche qui i percorsi si tolgono dai dati finche' non devono essere
-          // tracciati, e non solo quando sono invisibili: con una scia lunga
-          // quanto l'intera apertura, a istante zero il confronto che decide
-          // cosa disegnare cade dentro l'errore del calcolo a virgola mobile e
-          // qualche collegamento compare gia' fatto, senza tracciamento.
-          // Corretto sulla rete e dimenticato qui.
-          data: globo > 0.002 && giroGlobo > 0.002 ? mondo.archi : [],
+          // Presenti fin dal precaricamento, come la rete: cosi' gli attributi
+          // si costruiscono quando sullo schermo non c'e' niente. Si tolgono
+          // solo quando l'apertura e' finita per sempre.
+          data: globo <= 0.002 && giroGlobo >= 0.999 ? [] : mondo.archi,
           getPath: (a) => a.path,
           getTimestamps: (a) => a.timestamps,
           // Bianchi, non nella scala del valore: qui non misurano niente, e
@@ -677,10 +675,11 @@ export function useSequenza({
           getColor: [238, 244, 250, 225 * globo],
           widthUnits: "pixels",
           getWidth: 3,
-          // Come la rete: niente dissolvenza, e scia corta quanto basta.
+          // Come la rete: niente dissolvenza, scia corta, e tempo che parte
+          // sotto il primo istante utile.
           fadeTrail: false,
           trailLength: mondo.fine * 1.05,
-          currentTime: giroGlobo * mondo.fine,
+          currentTime: giroGlobo * mondo.fine - 2,
           updateTriggers: { getColor: globo },
         }),
 

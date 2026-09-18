@@ -778,6 +778,20 @@ legge come un'unica cosa che cresce. La proporzione è limitata agli estremi, pe
 collegamento da undici chilometri non può durare un millesimo del più lungo senza sparire
 dall'animazione.
 
+### La causa vera: gli attributi costruiti a sipario aperto
+
+La correzione del difetto di precisione — togliere i percorsi dai dati finché la rete non deve
+accendersi — **era un errore, e ha introdotto qualcosa di peggio**. La prima volta che uno strato
+riceve dei dati, la scheda video deve costruirne gli attributi: qui cinquecento percorsi da
+quarantaquattro punti. Quel lavoro sta dentro un solo fotogramma, e cadeva esattamente all'istante
+in cui l'animazione parte. Il tempo avanza mentre il fotogramma è bloccato, e quando il disegno
+riprende gli archi sono già a metà: **compaiono già fatti**.
+
+È la stessa ragione per cui le colonne esistono fin dal precaricamento a opacità zero — una
+lezione di T10 che avevo applicato lì e violato qui. I percorsi restano ora sempre nei dati, e il
+difetto di precisione si evita facendo partire il tempo **sotto** il primo istante utile, con un
+margine largo, invece che a filo dello zero.
+
 ### E la scia non deve dissolvere
 
 Per ottenere «quello che è tracciato resta» si allungava la scia molto oltre la durata della
