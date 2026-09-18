@@ -732,6 +732,12 @@ Due correzioni: i percorsi si tolgono dai dati finché la rete non deve accender
 faceva all'altro estremo quando si spegne; e la scia si accorcia al minimo necessario, perché
 allungarla oltre non cambia niente di visibile e peggiora la precisione del confronto.
 
+**Lo stesso difetto era anche sugli archi del globo, ed è stato corretto una seconda volta.** Lì
+si manifestava in modo diverso — non archi fermi sulla mappa, ma qualche collegamento che compariva
+già fatto invece di tracciarsi — ed è la ragione per cui non l'avevo riconosciuto subito. La
+lezione è che la correzione andava cercata ovunque ci fosse una scia lunga quanto la propria
+sequenza, non solo dove il sintomo si era visto.
+
 ## Lo spegnimento selettivo degli strati
 
 Da questa indagine è nato `?senza=id,id`, che toglie uno strato per volta dalla scena. Serve a

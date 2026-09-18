@@ -616,7 +616,13 @@ export function useSequenza({
 
         new TripsLayer<ArcoGlobo>({
           id: "globo-archi",
-          data: globo > 0.002 ? mondo.archi : [],
+          // Anche qui i percorsi si tolgono dai dati finche' non devono essere
+          // tracciati, e non solo quando sono invisibili: con una scia lunga
+          // quanto l'intera apertura, a istante zero il confronto che decide
+          // cosa disegnare cade dentro l'errore del calcolo a virgola mobile e
+          // qualche collegamento compare gia' fatto, senza tracciamento.
+          // Corretto sulla rete e dimenticato qui.
+          data: globo > 0.002 && giroGlobo > 0.002 ? mondo.archi : [],
           getPath: (a) => a.path,
           getTimestamps: (a) => a.timestamps,
           // Bianchi, non nella scala del valore: qui non misurano niente, e
@@ -625,7 +631,9 @@ export function useSequenza({
           getColor: [238, 244, 250, 225 * globo],
           widthUnits: "pixels",
           getWidth: 3,
-          trailLength: mondo.fine * 2,
+          // Appena il minimo perche' niente svanisca: allungarla peggiora la
+          // precisione del confronto e non cambia niente di visibile.
+          trailLength: mondo.fine * 1.05,
           currentTime: giroGlobo * mondo.fine,
           updateTriggers: { getColor: globo },
         }),
