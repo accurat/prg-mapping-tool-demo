@@ -15,8 +15,13 @@ import { conta, percentuale, valuta } from "@/lib/format";
 import { useFrameMeter } from "@/lib/lab/useFrameMeter";
 import { useRenderTrust } from "@/lib/lab/useRenderTrust";
 import { costruisciScena, type DatiScena } from "@/lib/scena/dati";
-import { NOMI_FASE, START_ZOOM, useSequenza, type Fase } from "@/lib/scena/sequenza";
-import { nomeDominante } from "@/lib/stories/contesto";
+import {
+  START_ZOOM,
+  nomeFase,
+  useSequenza,
+  type Fase,
+  type Inclinazione,
+} from "@/lib/scena/sequenza";
 
 /**
  * T12 — i pannelli sul muro.
@@ -52,27 +57,44 @@ const DATA = "18.09.2026";
  */
 const DURATA_MS = 5000;
 
-/** Quando ciascuna zona e' accesa, secondo il documento dei layout. */
-const VISIBILITA: Record<Fase, { alta: boolean; sinistra: boolean; destra: boolean; striscia: boolean }> = {
-  attesa: { alta: false, sinistra: false, destra: false, striscia: false },
-  // M2: titolo e data solo in apertura, la striscia compare a discesa finita.
-  preparazione: { alta: true, sinistra: false, destra: false, striscia: false },
-  globo: { alta: true, sinistra: false, destra: false, striscia: false },
-  discesa: { alta: true, sinistra: false, destra: false, striscia: false },
-  // La sosta sul paese e' ancora apertura: titolo e data restano, il resto no.
-  paese: { alta: true, sinistra: false, destra: false, striscia: false },
-  colonne: { alta: false, sinistra: false, destra: false, striscia: true },
-  lettura: { alta: false, sinistra: false, destra: false, striscia: true },
-  appiattimento: { alta: false, sinistra: false, destra: false, striscia: true },
-  archi: { alta: false, sinistra: false, destra: false, striscia: true },
-  // M4: il pannello del soggetto entra insieme alla stretta sull'area.
-  fuoco: { alta: false, sinistra: true, destra: false, striscia: true },
-  // M9: il grafico di approfondimento compare accanto, non al posto della scena.
-  flusso: { alta: false, sinistra: true, destra: true, striscia: true },
-  // Quando restano solo le altezze il grafico se ne va: il muro torna a parlare
-  // di una cosa sola, e quella cosa e' il rilievo.
-  rilievo: { alta: false, sinistra: true, destra: false, striscia: true },
-};
+type Zone = { alta: boolean; sinistra: boolean; destra: boolean; striscia: boolean };
+const NIENTE: Zone = { alta: false, sinistra: false, destra: false, striscia: false };
+
+/**
+ * Quando ciascuna zona e' accesa, secondo il documento dei layout.
+ *
+ * Dipende dall'ordine dell'inclinazione, perche' i due ordini hanno due finali
+ * diversi. In quello inclinato — il predefinito — **i pannelli arrivano per
+ * ultimi**, quando il rilievo si e' alzato e la scena e' ferma: finche'
+ * qualcosa si muove un pannello e' una seconda cosa da guardare nello stesso
+ * istante, e le cifre finiscono per competere con il movimento invece di
+ * spiegarlo.
+ */
+function zoneDi(fase: Fase, inclinazione: Inclinazione): Zone {
+  // M2: titolo e data solo in apertura.
+  if (fase === "attesa") return NIENTE;
+  if (fase === "preparazione" || fase === "globo" || fase === "discesa" || fase === "paese") {
+    return { ...NIENTE, alta: true };
+  }
+
+  // M3: la striscia di contesto compare quando il territorio si popola, e da
+  // li' non se ne va piu'.
+  const conStriscia: Zone = { ...NIENTE, striscia: true };
+
+  if (inclinazione === "fuoco") {
+    // M4 e M9 insieme, alla fine: i numeri dell'area e il grafico di
+    // approfondimento arrivano sul rilievo gia' alzato.
+    return fase === "numeri" ? { ...conStriscia, sinistra: true, destra: true } : conStriscia;
+  }
+
+  // Ordine originale: il pannello del soggetto entra con la stretta (M4), il
+  // grafico si affianca durante il flusso (M9).
+  if (fase === "fuoco") return { ...conStriscia, sinistra: true };
+  if (fase === "flusso" || fase === "rilievo" || fase === "numeri") {
+    return { ...conStriscia, sinistra: true, destra: true };
+  }
+  return conStriscia;
+}
 
 type Caricato = { dataset: Dataset; rotte: Rotte; glossario: Glossario; scena: DatiScena };
 
@@ -81,6 +103,7 @@ export default function T12Page() {
   const [errore, setErrore] = useState<string | null>(null);
   const [map, setMap] = useState<MapHandle | null>(null);
   const [labelId, setLabelId] = useState<string | undefined>();
+  const [inclinazione, setInclinazione] = useState<Inclinazione>("fuoco");
 
   const { stats } = useFrameMeter();
   const trust = useRenderTrust(stats.medianMs);
@@ -135,6 +158,8 @@ export default function T12Page() {
       map={map}
       labelId={labelId}
       onReady={handleReady}
+      inclinazione={inclinazione}
+      onInclinazione={setInclinazione}
       stats={stats}
       trust={trust}
     />
@@ -153,6 +178,8 @@ function Scena({
   map,
   labelId,
   onReady,
+  inclinazione,
+  onInclinazione,
   stats,
   trust,
 }: {
@@ -160,20 +187,24 @@ function Scena({
   map: MapHandle | null;
   labelId: string | undefined;
   onReady: (m: MapHandle) => void;
+  inclinazione: Inclinazione;
+  onInclinazione: (v: Inclinazione) => void;
   stats: ReturnType<typeof useFrameMeter>["stats"];
   trust: ReturnType<typeof useRenderTrust>;
 }) {
   const { dataset, glossario, scena } = caricato;
-  const { fase, prefetchMs, etichetteHub, opacitaEtichette } = useSequenza({
+  const { fase, prefetchMs, esegui, etichetteHub, opacitaEtichette } = useSequenza({
     map,
     labelId,
     dati: scena,
+    inclinazione,
   });
 
   const [pannelli, setPannelli] = useState(true);
   const [sfocatura, setSfocatura] = useState(false);
   const [numeriVivi, setNumeriVivi] = useState(false);
   const [prova, setProva] = useState<Misura[] | null>(null);
+  const primoGiro = useRef(true);
   const [inCorso, setInCorso] = useState(false);
 
   /**
@@ -263,6 +294,16 @@ function Scena({
     }).catch(() => {});
   }, [inCorso, map, scena.stores.length]);
 
+  // Cambiare l'ordine a meta' sequenza non direbbe niente: i due ordini si
+  // confrontano solo dall'inizio, quindi l'interruttore fa ripartire il volo.
+  useEffect(() => {
+    if (primoGiro.current) {
+      primoGiro.current = false;
+      return;
+    }
+    void esegui();
+  }, [inclinazione, esegui]);
+
   /**
    * Avvio automatico con `?prova=1`.
    *
@@ -291,10 +332,13 @@ function Scena({
       if (e.key === "b" || e.key === "B") setSfocatura((v) => !v);
       if (e.key === "n" || e.key === "N") setNumeriVivi((v) => !v);
       if (e.key === "m" || e.key === "M") void eseguiProva();
+      if (e.key === "i" || e.key === "I") {
+        onInclinazione(inclinazione === "discesa" ? "fuoco" : "discesa");
+      }
     };
     window.addEventListener("keydown", suTasto);
     return () => window.removeEventListener("keydown", suTasto);
-  }, [eseguiProva, inCorso]);
+  }, [eseguiProva, inCorso, inclinazione, onInclinazione]);
 
   const indiciFuoco = scena.indiciPerHub[scena.fuoco];
   const sintesi = useMemo(() => aggrega(dataset, indiciFuoco), [dataset, indiciFuoco]);
@@ -302,7 +346,10 @@ function Scena({
     () => aggrega(dataset, Int32Array.from({ length: dataset.conteggio }, (_, i) => i)),
     [dataset],
   );
-  const luogo = useMemo(() => nomeDominante(dataset, indiciFuoco), [dataset, indiciFuoco]);
+  // Il nome viene dall'hub, non dai negozi che gli fanno capo: quelli stanno
+  // sparsi su mezzo stato e il loro capoluogo piu' rappresentato e' un'altra
+  // citta' — la striscia diceva un nome e la scena ne mostrava un altro.
+  const luogo = scena.nomiHub[scena.fuoco];
 
   const voci = useMemo<Voce[]>(() => {
     const media = composizioneMedia(dataset, "eta");
@@ -314,8 +361,7 @@ function Scena({
     }));
   }, [dataset, glossario, indiciFuoco]);
 
-  const visibili = VISIBILITA[fase];
-  const spente = { alta: false, sinistra: false, destra: false, striscia: false };
+  const visibili = zoneDi(fase, inclinazione);
 
   return (
     <main className="h-screen w-screen overflow-hidden bg-black">
@@ -338,7 +384,7 @@ function Scena({
           <Cornice
             larghezza={WIDTH}
             altezza={HEIGHT}
-            visibili={pannelli ? visibili : spente}
+            visibili={pannelli ? visibili : NIENTE}
             zone={{
               alta: (
                 <div style={{ fontSize: TIPI.titolo, letterSpacing: "0.12em" }}>
@@ -361,7 +407,7 @@ function Scena({
                     grande
                   />
                   <Riga etichetta="potenziale inespresso" valore={valuta(sintesi.potenziale)} />
-                  <Riga etichetta="negozi riforniti" valore={conta(sintesi.negozi)} />
+                  <Riga etichetta="negozi collegati" valore={conta(sintesi.negozi)} />
                   <Riga
                     etichetta="sotto il riferimento"
                     valore={`${sintesi.sotto} su ${sintesi.misurabili}`}
@@ -387,7 +433,7 @@ function Scena({
                   sfocata={sfocatura}
                   voci={[
                     luogo,
-                    `${conta(sintesi.negozi)} negozi riforniti`,
+                    `${conta(sintesi.negozi)} negozi collegati`,
                     valuta(sintesi.potenziale),
                     `${percentuale(sintesi.crescita ?? 0, { segno: true })} possibile`,
                     `paese ${percentuale(nazionale.crescita ?? 0, { segno: true })}`,
@@ -401,8 +447,13 @@ function Scena({
 
       <Hud>
         <div className="flex items-start gap-3">
-          <HudPanel title="T12 — pannelli sul muro">
-            <Row label="momento" value={NOMI_FASE[fase]} tone="good" />
+          <HudPanel title="T12 — la scena">
+            <Row label="momento" value={nomeFase(fase, inclinazione)} tone="good" />
+            <Row
+              label="inclinazione"
+              value={inclinazione === "discesa" ? "nella discesa" : "nella stretta"}
+              tone="warn"
+            />
             <Row
               label="fotogrammi mediana"
               value={`${stats.median.toFixed(1)}/s`}
@@ -445,9 +496,10 @@ function Scena({
           {prova ? <Risultati righe={prova} inCorso={inCorso} /> : null}
           <HudPanel>
             <div className="text-white/60">
-              <b className="text-white">M</b> esegui la prova (8 × 5 s) · <b className="text-white">R</b>{" "}
-              ripeti la sequenza · <b className="text-white">P</b> pannelli ·{" "}
-              <b className="text-white">B</b> sfocatura · <b className="text-white">N</b> numeri vivi
+              <b className="text-white">R</b> ripeti · <b className="text-white">I</b> inclinazione
+              · <b className="text-white">P</b> pannelli · <b className="text-white">B</b>{" "}
+              sfocatura · <b className="text-white">N</b> numeri vivi ·{" "}
+              <b className="text-white">M</b> prova (8 × 5 s)
             </div>
           </HudPanel>
         </div>

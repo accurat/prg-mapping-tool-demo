@@ -58,6 +58,16 @@ const BORDI_PAESE: [[number, number], [number, number]] = [
   [-66.9, 49.4],
 ];
 
+/** Il rettangolo che contiene un insieme di punti. */
+function riquadroDi(punti: [number, number][]): [[number, number], [number, number]] {
+  const lng = punti.map((p) => p[0]);
+  const lat = punti.map((p) => p[1]);
+  return [
+    [Math.min(...lng), Math.min(...lat)],
+    [Math.max(...lng), Math.max(...lat)],
+  ];
+}
+
 /**
  * Dove sta l'inclinazione nella sequenza.
  *
@@ -83,7 +93,8 @@ export type Fase =
   | "archi"
   | "fuoco"
   | "flusso"
-  | "rilievo";
+  | "rilievo"
+  | "numeri";
 
 /**
  * Il nome del momento, che dipende da dove sta l'inclinazione.
@@ -110,6 +121,7 @@ export const NOMI_FASE: Record<Fase, string> = {
   fuoco: "si stringe sull'area",
   flusso: "la merce scorre",
   rilievo: "restano le altezze",
+  numeri: "i numeri dell'area",
 };
 
 /**
@@ -193,6 +205,8 @@ export type Momento = {
   hub?: number;
   /** Quanto e' ingrandito l'hub rispetto alla sua misura, 1 = misura vera. */
   scalaHub?: number;
+  /** Quanto e' ingrandito il raggio delle colonne, 1 = misura vera. */
+  scalaStore?: number;
   /** Opacita' delle etichette degli hub, 0..1. Vivono solo sull'inquadratura del paese. */
   etichette?: number;
   /** Opacita' della scena di apertura sul globo, 0..1. */
@@ -206,7 +220,7 @@ export function useSequenza({
   labelId,
   dati,
   automatica = true,
-  inclinazione = "discesa",
+  inclinazione = "fuoco",
 }: {
   map: MapHandle | null;
   labelId: string | undefined;
@@ -295,15 +309,6 @@ export function useSequenza({
   }, [stores, hubs, dati.altezzaSegnaposto, dati.proporzioneArco, dati.verticeMassimo]);
 
   /**
-   * I negozi che restano quando la scena si stringe.
-   *
-   * Ne restano dodici, scelti secondo **due criteri diversi**: i sei con il
-   * potenziale piu' alto e i sei che movimentano piu' merce. Cosi' il
-   * fotogramma finale non mostra una classifica sola ma mette a confronto due
-   * domande — dove c'e' da crescere e dove gia' si lavora — che nei dati veri
-   * non coincidono quasi mai.
-   */
-  /**
    * Dove si appoggiano le etichette degli hub.
    *
    * Su un anello attorno al gruppo, ciascuna nella direzione in cui gia' sta il
@@ -347,12 +352,7 @@ export function useSequenza({
     });
   }, [hubs, dati.nomiHub]);
 
-  const superstiti = useMemo(() => {
-    const suoi = stores.filter((s) => s.hub === dati.fuoco);
-    const perPotenziale = [...suoi].sort((a, b) => b.value - a.value).slice(0, 6);
-    const perVolume = [...suoi].sort((a, b) => b.volume - a.volume).slice(0, 6);
-    return new Set([...perPotenziale, ...perVolume]);
-  }, [stores, dati.fuoco]);
+  const superstiti = dati.superstiti;
 
   /**
    * Le versioni ridotte dei dati.
@@ -404,6 +404,7 @@ export function useSequenza({
         flusso = 0,
         svanire = 0,
         scalaHub = 1,
+        scalaStore = 1,
         etichette = 0,
         globo = 0,
         giroGlobo = 0,
@@ -486,7 +487,7 @@ export function useSequenza({
           id: "negozi",
           data: storeAttivi,
           diskResolution: 6,
-          radius: dati.raggioStore,
+          radius: dati.raggioStore * scalaStore,
           extruded: true,
           getPosition: (s) => s.position,
           getElevation: (s) => {
@@ -930,18 +931,50 @@ export function useSequenza({
     // Il movimento della camera e la dissolvenza avvengono **insieme**: se il
     // muro si svuotasse prima, la sala vedrebbe sparire dei dati e poi un
     // viaggio; cosi' vede una cosa sola, l'attenzione che si restringe.
+    /**
+     * L'inquadratura della stretta la calcola la mappa, non noi.
+     *
+     * Vale qui la stessa ragione della sosta sul paese: e' MapLibre a sapere
+     * quanto e' grande la propria tela e come si traduce uno zoom in metri per
+     * pixel. Una formula nostra e' gia' stata sbagliata una volta — con la
+     * costante delle tessere da 256 pixel invece che da 512 — e il sintomo era
+     * una camera che si fermava troppo lontano.
+     */
+    const bordiFuoco = riquadroDi([
+      dati.hubs[dati.fuoco].position,
+      ...[...dati.superstiti].map((s) => s.position),
+    ]);
+    const inquadraturaFuoco = m.cameraForBounds(bordiFuoco, { padding: 200 });
+
     setFase("fuoco");
     m.easeTo({
-      center: dati.centroFuoco,
-      zoom: dati.zoomFuoco,
+      center: inquadraturaFuoco?.center ?? dati.centroFuoco,
+      zoom: inquadraturaFuoco?.zoom ?? dati.zoomFuoco,
       pitch: pitchFuoco,
       bearing: 0,
       duration: 3000,
       essential: true,
     });
+    const zoomStretta = m.getZoom();
+    const arcoStretta = (inquadraturaFuoco?.zoom ?? dati.zoomFuoco) - zoomStretta;
     await anima(3000, (_dolce, lineare) => {
       const p = Math.min(1, lineare / 0.5);
-      disegna({ salita: 1, piatto: 1, rete: 1, stretta: p * p * (3 - 2 * p), hub: 1 });
+      // I raggi si riassorbono seguendo lo zoom, non il tempo: e' la stessa
+      // ragione per cui lo fanno gli hub scendendo sul paese.
+      const avvicinamento =
+        arcoStretta === 0
+          ? 1
+          : Math.max(0, Math.min(1, (m.getZoom() - zoomStretta) / arcoStretta));
+      const raggi = 1 + (dati.restringimentoFuoco - 1) * avvicinamento;
+      disegna({
+        salita: 1,
+        piatto: 1,
+        rete: 1,
+        stretta: p * p * (3 - 2 * p),
+        hub: 1,
+        scalaHub: raggi,
+        scalaStore: raggi,
+      });
     }, viva);
     if (!viva()) return;
 
@@ -950,7 +983,16 @@ export function useSequenza({
     const secondiDiFlusso = () => (performance.now() - partenza) / 1000;
     const giro = () => {
       if (!viva()) return;
-      disegna({ salita: 1, piatto: 1, rete: 1, stretta: 1, flusso: secondiDiFlusso(), hub: 1 });
+      disegna({
+        salita: 1,
+        piatto: 1,
+        rete: 1,
+        stretta: 1,
+        flusso: secondiDiFlusso(),
+        hub: 1,
+        scalaHub: dati.restringimentoFuoco,
+        scalaStore: dati.restringimentoFuoco,
+      });
       rafFlusso.current = requestAnimationFrame(giro);
     };
     rafFlusso.current = requestAnimationFrame(giro);
@@ -986,10 +1028,31 @@ export function useSequenza({
         flusso: secondiDiFlusso(),
         svanire: Math.min(1, lineare / 0.55),
         hub: 1,
+        scalaHub: dati.restringimentoFuoco,
+        scalaStore: dati.restringimentoFuoco,
       });
     }, viva);
     if (!viva()) return;
-    disegna({ salita: 1, piatto: 0, rete: 1, stretta: 1, svanire: 1, hub: 1 });
+    disegna({
+      salita: 1,
+      piatto: 0,
+      rete: 1,
+      stretta: 1,
+      svanire: 1,
+      hub: 1,
+      scalaHub: dati.restringimentoFuoco,
+      scalaStore: dati.restringimentoFuoco,
+    });
+
+    // Solo adesso i numeri.
+    //
+    // Finche' qualcosa si muove, un pannello e' una seconda cosa da guardare
+    // nello stesso istante. Quando il rilievo si e' alzato la scena e' ferma, e
+    // le cifre arrivano su qualcosa che la sala ha gia' visto invece di
+    // competerci.
+    await attendi(900);
+    if (!viva()) return;
+    setFase("numeri");
   }, [map, disegna, anima, dati, inclinazione]);
 
   useEffect(() => {

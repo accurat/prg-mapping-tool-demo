@@ -11,9 +11,9 @@ const TESTS = [
   { id: "t7", title: "Interazioni", desc: "Gesti, volo, trascinamento con selezione continua", ready: true },
   { id: "t8", title: "Tre schermi", desc: "Un canvas da 5760 contro tre da 1920", ready: false },
   { id: "t9", title: "Leggibilita'", desc: "Dimensioni minime a dodici metri", ready: true },
-  { id: "t10", title: "Sequenza completa", desc: "Discesa, colonne, appiattimento, rete a stella", ready: true },
+  { id: "t10", title: "Sequenza completa", desc: "Confluita in T12: stessa sequenza, dati veri", ready: false },
   { id: "t11", title: "Le storie", desc: "Estratte dai dati veri, deterministiche, con la regia per la scena", ready: true },
-  { id: "t12", title: "I pannelli sul muro", desc: "Le zone del layout sopra la scena, e quanto costa comporle", ready: true },
+  { id: "t12", title: "La scena", desc: "Globo, discesa, rilievo, rete, pannelli. Dati veri, e quanto costa comporli", ready: true },
 ];
 
 export default function Home() {

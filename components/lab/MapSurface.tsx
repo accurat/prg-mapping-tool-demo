@@ -74,6 +74,15 @@ export function MapSurface({
 
     map.on("load", () => {
       map.setProjection({ type: projection });
+      // In sviluppo la mappa e' raggiungibile dalla console.
+      //
+      // Serve a rispondere a domande come «a che zoom siamo adesso» senza
+      // ricostruirle da una formula: un'approssimazione della matematica di
+      // MapLibre e' gia' stata la causa di un'inquadratura sbagliata, e averla
+      // sottomano evita di ripetere l'errore.
+      if (process.env.NODE_ENV === "development") {
+        (window as unknown as { mappa?: MapLibreMap }).mappa = map;
+      }
       onReady?.(map);
     });
 

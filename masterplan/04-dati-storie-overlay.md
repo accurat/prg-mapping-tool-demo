@@ -626,6 +626,66 @@ tasto `R` che c'è da sempre.
 
 ---
 
+# La fusione: una scena sola
+
+T10 e T12 avevano ormai in comune tutto tranne i dati e i pannelli, e la sequenza era già
+condivisa. Sono state fuse in `/t12`; la pagina T10 non esiste più, e i suoi risultati restano
+qui come storia.
+
+**L'ordine inclinato è diventato quello predefinito**: si arriva a picco, ci si inclina solo sulla
+stretta finale. `I` passa ancora all'ordine originale, per confronto.
+
+**I pannelli arrivano per ultimi**, in un momento nuovo che si chiama «i numeri dell'area»: dopo
+che il rilievo si è alzato e gli archi si sono spenti. Finché qualcosa si muove, un pannello è una
+seconda cosa da guardare nello stesso istante, e le cifre competono con il movimento invece di
+spiegarlo.
+
+## Sulla rete, il potenziale inespresso non c'è
+
+È la scoperta di questa sessione, ed è il motivo per cui la scena ha cambiato unità di misura.
+
+| Sui 500 negozi che la rete tocca | |
+| --- | --- |
+| Potenziale inespresso a zero esatto | 214 |
+| Mediana | **0 $** |
+| Novantesimo percentile | 455 $ |
+| Massimo | 9.087 $ (un negozio solo) |
+
+Un rilievo costruito su quei numeri è una guglia sola in mezzo a una pianura piatta. E il criterio
+«i sei negozi con il potenziale più alto», che sceglieva metà dei superstiti, sceglieva **sei nomi
+a caso fra quattrocento a pari merito**: un criterio che non distingue niente è peggio di un
+criterio in meno.
+
+I dollari per rotta hanno invece una distribuzione vera — mediana 1,8 milioni, un fattore otto fra
+il decimo e il novantesimo percentile. L'altezza delle colonne misura quindi **la merce**, che è
+la grandezza di cui questa scena parla e la stessa che regola la frequenza del flusso sugli archi.
+Il potenziale resta la grandezza del rilievo nazionale, dove c'è e ha una forma.
+
+## Una stella abbastanza stretta
+
+La stella su cui ci si chiude non si sceglie più solo per valore ma anche per **quanto è larga**,
+con una penalità quadratica sull'estensione. Su questa rete la rotta mediana supera i mille
+chilometri: la stella più ricca era sparsa su 969 km di raggio, e stringersi su di lei significava
+tornare alla vista nazionale proprio nel momento in cui la scena doveva chiudersi. Ora è Dallas,
+455 km di raggio.
+
+## L'inquadratura la calcola la mappa, e le misure si tarano su quella
+
+Anche la stretta finale usa ora `cameraForBounds` invece della mia formula, che aveva la costante
+delle tessere da 256 pixel invece che da 512 e fermava la camera troppo lontano.
+
+Con l'inquadratura vera in mano — **zoom 6,93, 547 metri per pixel**, letta dalla mappa e non
+stimata — le misure si tarano: la colonna più alta misura un quarto dell'altezza del muro, un
+negozio resta largo una quindicina di pixel. Le stesse misure non possono servire due scale
+separate da un fattore trenta, quindi i raggi si riassorbono durante la stretta seguendo lo zoom,
+come già facevano gli hub scendendo sul paese.
+
+Da qui una comodità che mancava: **in sviluppo la mappa è raggiungibile come `window.mappa`**.
+Un'approssimazione della matematica di MapLibre è già stata la causa di un'inquadratura sbagliata;
+averla sottomano evita di ripetere l'errore.
+
+---
+
 # Un difetto che il codice dichiarava impossibile
 
 Sintomo: una manciata di **mezzi archi azzurri fermi sulla mappa**, presenti fin dalla discesa,

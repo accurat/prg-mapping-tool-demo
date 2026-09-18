@@ -18,7 +18,6 @@
  * ci si stringe e' su una stella, non su una citta'.
  */
 
-import { potenziale } from "../data/metrics.ts";
 import type { Dataset, Rotte } from "../data/schema.ts";
 import { scalaAltezze } from "../data/aggregate.ts";
 import { nomeDominante } from "../stories/contesto.ts";
@@ -40,6 +39,15 @@ export type DatiScena = {
   pitchArrivo: number;
   /** La stella su cui la sequenza si stringe. */
   fuoco: number;
+  /**
+   * I negozi che restano quando la scena si stringe.
+   *
+   * Stanno qui e non nella sequenza perche' sono **la stessa cosa che decide
+   * l'inquadratura**: la camera si chiude su quello che resta, non su tutto
+   * quello che c'era. Calcolarli in due posti vorrebbe dire poter inquadrare
+   * un insieme diverso da quello che si vede.
+   */
+  superstiti: Set<Store>;
   centroFuoco: [number, number];
   zoomFuoco: number;
   /** Raggio delle colonne dei negozi, in metri. */
@@ -69,6 +77,15 @@ export type DatiScena = {
   proporzioneArco: number;
   /** Quota massima di un collegamento, in metri: il tetto della proporzione. */
   verticeMassimo: number;
+  /**
+   * Quanto si stringono i raggi di colonne e hub quando la scena si chiude.
+   *
+   * Le stesse misure non possono servire due scale separate da un fattore
+   * trenta: un raggio che a vista nazionale e' un punto visibile, da vicino e'
+   * un disco che copre la citta' sotto. Si riassorbe seguendo lo zoom, come
+   * l'ingrandimento degli hub sull'inquadratura del paese.
+   */
+  restringimentoFuoco: number;
   /** Altezza massima delle colonne quando mostrano il dato, in metri. */
   altezzaDato: number;
   /** Altezza uniforme quando diventano segnaposto. */
@@ -86,11 +103,26 @@ export function costruisciScena(d: Dataset, rotte: Rotte): DatiScena {
     position: [d.lng[indice], d.lat[indice]] as [number, number],
   }));
 
-  // Il potenziale si normalizza sul 99esimo percentile come il rilievo: un solo
-  // valore fuori scala produrrebbe una guglia che schiaccia tutto il resto.
-  const potenziali = Array.from(rotte.origine, (i) => potenziale(d, i) ?? 0);
-  const scala = scalaAltezze(potenziali);
+  /**
+   * L'altezza delle colonne misura la **merce**, non il potenziale inespresso.
+   *
+   * E' una deviazione dal concept, ed e' il dato a imporla. Sui cinquecento
+   * negozi che la rete tocca il potenziale inespresso praticamente non esiste:
+   * 214 sono esattamente a zero, la mediana e' zero, il novantesimo percentile
+   * vale 455 dollari e un solo negozio arriva a 9.087. Un rilievo costruito su
+   * quei numeri e' una guglia sola in mezzo a una pianura piatta — che e' una
+   * verita', ma non e' una scena, e nemmeno una verita' che riguardi la rete.
+   *
+   * I dollari per rotta hanno invece una distribuzione vera: mediana 1,8
+   * milioni, dal decimo al novantesimo percentile un fattore otto. E' la
+   * grandezza di cui questa scena parla — quanta merce passa di qui — ed e'
+   * la stessa che regola la frequenza del flusso sugli archi.
+   *
+   * Il potenziale resta la grandezza del rilievo nazionale, dove c'e' e ha una
+   * forma: qui si guarda un'altra cosa.
+   */
   const valori = Array.from(rotte.valore);
+  const scala = scalaAltezze(valori);
   const valoreMassimo = Math.max(...valori, 1);
 
   const stores: Store[] = [];
@@ -112,7 +144,7 @@ export function costruisciScena(d: Dataset, rotte: Rotte): DatiScena {
     stores.push({
       position: [d.lng[origine], d.lat[origine]],
       hub: posizioneHub.get(rotte.destinazione[k])!,
-      value: Math.max(0.05, scala.normalizza(potenziali[k])),
+      value: Math.max(0.05, scala.normalizza(valori[k])),
       reach: distanze[k] / distanzaMassima,
       // Il volume e' il valore in dollari della rotta: e' la merce che passa,
       // non il margine. Le due cose nel dataset non coincidono.
@@ -120,11 +152,49 @@ export function costruisciScena(d: Dataset, rotte: Rotte): DatiScena {
     });
   }
 
-  // La stella su cui stringere: quella con piu' potenziale da prendere.
-  const perStella = hubs.map((_, i) =>
-    stores.filter((s) => s.hub === i).reduce((somma, s) => somma + s.value, 0),
+  /**
+   * La stella su cui stringere, e chi vi resta.
+   *
+   * Di ogni stella sopravvivono i dodici negozi che movimentano piu' merce.
+   *
+   * Il criterio era due — i sei con piu' potenziale e i sei con piu' merce, per
+   * mettere a confronto due domande diverse — ma su questa rete il potenziale
+   * e' nullo per quattrocento negozi su cinquecento: «i sei con il potenziale
+   * piu' alto» sceglieva sei nomi a caso fra quattrocento a pari merito. Un
+   * criterio che non distingue niente e' peggio di un criterio in meno.
+   *
+   * La scelta di **quale** stella non guarda solo al valore ma anche a quanto
+   * e' larga. Su questa rete la rotta mediana e' lunga oltre mille chilometri:
+   * la stella piu' ricca puo' essere sparsa su mezzo continente, e inquadrarla
+   * significherebbe tornare alla vista nazionale proprio nel momento in cui la
+   * scena dovrebbe stringersi. Il punteggio divide quindi il valore per
+   * l'estensione, e premia le stelle diffuse quanto basta a stare in
+   * un'inquadratura.
+   */
+  const stelle = hubs.map((h, i) => {
+    const suoi = stores.filter((s) => s.hub === i);
+    const superstiti = [...suoi].sort((a, b) => b.volume - a.volume).slice(0, 12);
+    const raggio = Math.max(
+      40,
+      ...superstiti.map((s) => distanzaKm(h.position, s.position)),
+    );
+    const valore = superstiti.reduce((somma, s) => somma + s.value, 0);
+    return {
+      superstiti,
+      punti: [h.position, ...superstiti.map((s) => s.position)] as [number, number][],
+      raggio,
+      // La penalita' per l'estensione e' **quadratica**, non lineare: una
+      // divisione dolce lascia vincere la stella piu' ricca anche quando e'
+      // larga mille chilometri, e a quel punto stringersi su di lei vuol dire
+      // tornare alla vista nazionale proprio nel momento in cui la scena
+      // dovrebbe chiudersi. Con il quadrato, trecento chilometri di raggio
+      // costano poco e mille costano quasi tutto.
+      punteggio: valore / (1 + (raggio / 300) ** 2),
+    };
+  });
+  const fuoco = stelle.findIndex(
+    (s) => s.punteggio === Math.max(...stelle.map((x) => x.punteggio)),
   );
-  const fuoco = perStella.indexOf(Math.max(...perStella));
 
   return {
     hubs,
@@ -136,11 +206,12 @@ export function costruisciScena(d: Dataset, rotte: Rotte): DatiScena {
     zoomArrivo: zoomPer(stores.map((s) => s.position)),
     pitchArrivo: 55,
     fuoco,
-    centroFuoco: hubs[fuoco].position,
-    zoomFuoco: zoomPer([
-      hubs[fuoco].position,
-      ...stores.filter((s) => s.hub === fuoco).map((s) => s.position),
-    ]),
+    superstiti: new Set(stelle[fuoco].superstiti),
+    centroFuoco: baricentro(stelle[fuoco].punti),
+    // L'inquadratura si calcola sui superstiti, non su tutti i negozi della
+    // stella: quelli che svaniscono non devono decidere da che altezza si
+    // guarda quelli che restano.
+    zoomFuoco: zoomPer(stelle[fuoco].punti),
     // A scala nazionale una colonna da 26 km, che a scala di citta' era
     // imponente, e' invisibile: l'altezza va riferita all'inquadratura.
     proporzioneArco: 0.1,
@@ -148,7 +219,13 @@ export function costruisciScena(d: Dataset, rotte: Rotte): DatiScena {
     raggioStore: 22_000,
     raggioHub: 52_000,
     ingrandimentoHub: 1.6,
-    altezzaDato: 180_000,
+    // Tarati sull'inquadratura finale misurata, non stimati: a 547 metri per
+    // pixel un negozio resta largo una quindicina di pixel e la colonna piu'
+    // alta ne misura duecentocinquanta, cioe' un quarto dell'altezza del muro.
+    restringimentoFuoco: 0.38,
+    // Tarata sull'inquadratura finale, che e' l'unica da cui un'altezza si
+    // vede: a vista nazionale la camera e' a picco e l'altezza non esiste.
+    altezzaDato: 140_000,
     altezzaSegnaposto: 22_000,
   };
 }
