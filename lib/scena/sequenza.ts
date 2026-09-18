@@ -58,13 +58,34 @@ const BORDI_PAESE: [[number, number], [number, number]] = [
   [-66.9, 49.4],
 ];
 
-/** Il rettangolo che contiene un insieme di punti. */
-function riquadroDi(punti: [number, number][]): [[number, number], [number, number]] {
-  const lng = punti.map((p) => p[0]);
-  const lat = punti.map((p) => p[1]);
+/**
+ * Il rettangolo che contiene un insieme di punti, con la possibilita' di
+ * lasciarne fuori gli estremi.
+ *
+ * Serve perche' **un punto solo puo' decidere un'inquadratura**. Fra i
+ * cinquecento negozi della rete ce n'e' uno alle Hawaii: preso alla lettera,
+ * il rettangolo che li contiene tutti arriva a 157 gradi ovest, sposta il
+ * centro di diciotto gradi in mezzo al Pacifico e costringe la camera ad
+ * allargarsi per inquadrare l'oceano. E' la stessa ragione per cui il rilievo
+ * taglia le altezze al novantanovesimo percentile.
+ *
+ * Con pochi punti — i superstiti di una stella — non si taglia niente: li'
+ * ogni punto e' uno dei pochi che si vogliono vedere.
+ */
+function riquadroDi(
+  punti: [number, number][],
+  quota = 0,
+): [[number, number], [number, number]] {
+  const estremi = (valori: number[]) => {
+    const ordinati = [...valori].sort((a, b) => a - b);
+    const salto = Math.floor(ordinati.length * quota);
+    return [ordinati[salto], ordinati[ordinati.length - 1 - salto]] as const;
+  };
+  const [ovest, est] = estremi(punti.map((p) => p[0]));
+  const [sud, nord] = estremi(punti.map((p) => p[1]));
   return [
-    [Math.min(...lng), Math.min(...lat)],
-    [Math.max(...lng), Math.max(...lat)],
+    [ovest, sud],
+    [est, nord],
   ];
 }
 
@@ -731,6 +752,50 @@ export function useSequenza({
       zoom: inquadratura?.zoom ?? 3.2,
     };
 
+    /**
+     * L'arrivo, chiesto alla mappa come tutto il resto.
+     *
+     * E se coincide con il paese, **il secondo volo non si fa**.
+     *
+     * I cinquanta punti di rifornimento coprono quasi per intero gli Stati
+     * Uniti: l'inquadratura che li contiene e quella che contiene il paese sono
+     * praticamente la stessa. Volare comunque due volte produce, dopo la sosta,
+     * uno spostamento di camera di pochi pixel — che non si legge come un
+     * movimento ma come un difetto.
+     *
+     * Il confronto e' fra le due inquadrature, non fra i dati: su un perimetro
+     * che coprisse un solo stato le due sarebbero diverse e i due voli
+     * tornerebbero ad avere senso, senza dover cambiare niente.
+     */
+    const inquadraturaArrivo = m.cameraForBounds(
+      // Un centesimo per lato: abbastanza a togliere l'isolato in mezzo
+      // all'oceano, troppo poco per spostare il confine di una costa.
+      riquadroDi(stores.map((negozio) => negozio.position), 0.01),
+      { padding: 120 },
+    );
+    const vistaArrivo = {
+      center: (inquadraturaArrivo?.center
+        ? [
+            "lng" in inquadraturaArrivo.center
+              ? inquadraturaArrivo.center.lng
+              : (inquadraturaArrivo.center as [number, number])[0],
+            "lat" in inquadraturaArrivo.center
+              ? inquadraturaArrivo.center.lat
+              : (inquadraturaArrivo.center as [number, number])[1],
+          ]
+        : dati.centro) as [number, number],
+      zoom: inquadraturaArrivo?.zoom ?? dati.zoomArrivo,
+    };
+    const unVoloSolo =
+      Math.abs(vistaArrivo.zoom - vistaPaese.zoom) < 0.45 &&
+      Math.hypot(
+        vistaArrivo.center[0] - vistaPaese.center[0],
+        vistaArrivo.center[1] - vistaPaese.center[1],
+      ) < 3;
+    // Se il volo e' uno solo, si atterra direttamente sull'inquadratura di
+    // arrivo: la sosta sul paese avviene li', ed e' gia' il posto giusto.
+    const primaMeta = unVoloSolo ? vistaArrivo : vistaPaese;
+
     setFase("preparazione");
     m.jumpTo({ center: dati.centro, zoom: START_ZOOM, pitch: 0, bearing: 0 });
     disegna({});
@@ -741,7 +806,7 @@ export function useSequenza({
       // il volo.
       tappe: [
         { center: [dati.centro[0] + 70, 22] as [number, number], zoom: ZOOM_GLOBO, pitch: 0 },
-        { ...vistaPaese, pitch: pitchDiscesa },
+        { ...primaMeta, pitch: pitchDiscesa },
       ],
       fromZoom: START_ZOOM,
       toZoom: dati.zoomArrivo,
@@ -804,7 +869,7 @@ export function useSequenza({
 
     setFase("discesa");
     m.flyTo({
-      ...vistaPaese,
+      ...primaMeta,
       /**
        * Il paese si guarda con l'inclinazione che avra' tutta la discesa.
        *
@@ -852,14 +917,16 @@ export function useSequenza({
     await attendi(1300);
     if (!viva()) return;
 
-    setFase("discesa");
-    m.flyTo({
-      center: dati.centro,
-      zoom: dati.zoomArrivo,
-      pitch: pitchDiscesa,
-      duration: 3000,
-      essential: true,
-    });
+    if (!unVoloSolo) {
+      setFase("discesa");
+      m.flyTo({
+        ...vistaArrivo,
+        pitch: pitchDiscesa,
+        bearing: 0,
+        duration: 3000,
+        essential: true,
+      });
+    }
     /**
      * Gli hub tornano alla loro misura vera mentre ci si avvicina, e le
      * etichette se ne vanno.
@@ -872,12 +939,17 @@ export function useSequenza({
      * non possono che coincidere.
      */
     const zoomPartenza = m.getZoom();
-    const arco = dati.zoomArrivo - zoomPartenza;
+    const arco = vistaArrivo.zoom - zoomPartenza;
     await anima(
-      3000,
-      () => {
+      unVoloSolo ? 1200 : 3000,
+      (_dolce, lineare) => {
+        // Senza secondo volo lo zoom non cambia: l'ingrandimento e le
+        // etichette si riassorbono allora sul tempo, che e' l'unica cosa che
+        // si muove.
         const avanzamento =
-          arco === 0 ? 1 : Math.max(0, Math.min(1, (m.getZoom() - zoomPartenza) / arco));
+          unVoloSolo || Math.abs(arco) < 0.05
+            ? lineare
+            : Math.max(0, Math.min(1, (m.getZoom() - zoomPartenza) / arco));
         disegna({
           hub: 1,
           scalaHub: dati.ingrandimentoHub + (1 - dati.ingrandimentoHub) * avanzamento,
@@ -1059,7 +1131,7 @@ export function useSequenza({
     await attendi(900);
     if (!viva()) return;
     setFase("numeri");
-  }, [map, disegna, anima, dati, inclinazione]);
+  }, [map, disegna, anima, dati, stores, inclinazione]);
 
   useEffect(() => {
     if (!automatica || avviata.current || !map) return;

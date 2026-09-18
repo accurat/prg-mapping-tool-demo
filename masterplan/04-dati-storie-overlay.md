@@ -664,6 +664,30 @@ il decimo e il novantesimo percentile. L'altezza delle colonne misura quindi **l
 la grandezza di cui questa scena parla e la stessa che regola la frequenza del flusso sugli archi.
 Il potenziale resta la grandezza del rilievo nazionale, dove c'è e ha una forma.
 
+## Un volo solo, quando i due ne valgono uno
+
+I cinquanta punti di rifornimento coprono quasi per intero gli Stati Uniti: l'inquadratura che li
+contiene e quella che contiene il paese sono praticamente la stessa. Volare comunque due volte
+produceva, dopo la sosta, uno spostamento di camera di pochi pixel — che non si legge come un
+movimento ma come un difetto.
+
+La sequenza confronta ora le due inquadrature e, se coincidono, **il secondo volo non si fa**: si
+atterra direttamente sull'inquadratura d'arrivo e la sosta avviene lì. Il confronto è fra le
+camere, non fra i dati, quindi su un perimetro che coprisse un solo stato i due voli tornerebbero
+ad avere senso senza cambiare niente.
+
+### Un negozio alle Hawaii decideva l'inquadratura di tutto il paese
+
+Il confronto non scattava, e la causa è istruttiva: fra i cinquecento negozi della rete ce n'è
+**uno alle Hawaii**. Preso alla lettera, il rettangolo che li contiene tutti arriva a 157 gradi
+ovest, sposta il centro di diciotto gradi in mezzo al Pacifico e costringe la camera ad allargarsi
+per inquadrare l'oceano. Il rettangolo si calcola ora scartando un centesimo dei punti per lato —
+abbastanza a togliere l'isolato, troppo poco per spostare il confine di una costa. È la stessa
+ragione per cui il rilievo taglia le altezze al novantanovesimo percentile.
+
+Misurato campionando lo zoom ogni 200 ms: sale a 4,41, resta fermo quattordici secondi, riparte
+solo per la stretta.
+
 ## Una stella abbastanza stretta
 
 La stella su cui ci si chiude non si sceglie più solo per valore ma anche per **quanto è larga**,
