@@ -27,6 +27,7 @@ riutilizzabile è un guadagno accessorio, non l'obiettivo.
 | `01-test.md` | I test, uno per uno: cosa si costruisce, cosa si misura, quando è promosso |
 | `02-alternative.md` | Le vie d'uscita, in cascata, per ogni possibile fallimento |
 | `03-risultati.md` | Tabella da riempire durante l'esecuzione |
+| `04-dati-storie-overlay.md` | Il blocco successivo: dati veri, motore delle storie, pannelli sul muro |
 
 ---
 
