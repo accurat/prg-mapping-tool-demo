@@ -520,8 +520,11 @@ Due dettagli non ovvi:
   arriverebbero durante il volo invece che prima. `prefetchDescent` accetta ora delle tappe fuori
   corridoio. Il precaricamento passa da 4 a 5,4 secondi a cache fredda.
 
-Il paese si guarda **a picco anche quando il resto della discesa sarà inclinato**: serve a
-riconoscere una forma, e una forma vista di scorcio è un'altra forma. Confini presi larghi e
+Il paese si guarda **con l'inclinazione che avrà tutta la discesa**: a picco nell'ordine
+predefinito, già inclinato in quello originale. L'inclinazione è una sola e sta in un punto solo
+della sequenza — o nella discesa o nella stretta — e farla arrivare in mezzo a una discesa che
+deve leggersi come un movimento solo aggiungerebbe un cambio di punto di vista che non serve.
+Confini presi larghi e
 senza Alaska né Hawaii: includerle costringerebbe a inquadrare mezzo emisfero per mostrare uno
 stato in cui non si scenderà mai, e quello che avanza ai lati — Canada, Messico, oceano — non è
 un problema, è il contesto.

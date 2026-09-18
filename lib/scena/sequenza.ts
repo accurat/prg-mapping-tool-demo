@@ -741,7 +741,7 @@ export function useSequenza({
       // il volo.
       tappe: [
         { center: [dati.centro[0] + 70, 22] as [number, number], zoom: ZOOM_GLOBO, pitch: 0 },
-        { ...vistaPaese, pitch: 0 },
+        { ...vistaPaese, pitch: pitchDiscesa },
       ],
       fromZoom: START_ZOOM,
       toZoom: dati.zoomArrivo,
@@ -805,10 +805,16 @@ export function useSequenza({
     setFase("discesa");
     m.flyTo({
       ...vistaPaese,
-      // Il paese si guarda a picco anche quando il resto della discesa sara'
-      // inclinato: e' un'inquadratura che serve a riconoscere una forma, e una
-      // forma vista di scorcio e' un'altra forma.
-      pitch: 0,
+      /**
+       * Il paese si guarda con l'inclinazione che avra' tutta la discesa.
+       *
+       * L'inclinazione e' **una sola e sta in un punto solo** della sequenza:
+       * o nella discesa o nella stretta. Se il volo verso il paese arrivasse
+       * sempre a picco per poi inclinarsi nel tratto successivo, nell'ordine
+       * originale ci sarebbe un cambio di punto di vista in piu' — proprio nel
+       * mezzo di una discesa che deve leggersi come un movimento solo.
+       */
+      pitch: pitchDiscesa,
       bearing: 0,
       duration: 2800,
       essential: true,
