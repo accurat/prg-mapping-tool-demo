@@ -292,7 +292,37 @@ export function useSequenza({
     const CAMPIONI = 44;
     const DURATA = 100;
 
-    return stores.map((store) => {
+    /**
+     * Quanto dura il tracciamento di un collegamento: **proporzionale alla sua
+     * lunghezza**.
+     *
+     * Con una durata uguale per tutti, a ogni istante ogni collegamento e'
+     * disegnato per la stessa *frazione* di se' — e una frazione uguale su
+     * lunghezze diverse significa velocita' diverse. Il piu' lungo di questa
+     * rete e' seicento volte il piu' corto: nei primi cento millisecondi le
+     * rotte transcontinentali guadagnano gia' quaranta pixel mentre quelle
+     * brevi restano invisibili, e a schermo si legge come una manciata di archi
+     * che compaiono di colpo gia' fatti mentre gli altri devono ancora
+     * cominciare.
+     *
+     * Legando la durata alla lunghezza, tutti si allungano alla **stessa
+     * velocita' sullo schermo**: nessuno scatta avanti, e il tracciamento si
+     * legge come un'unica cosa che cresce. La proporzione e' limitata agli
+     * estremi, perche' un collegamento da undici chilometri non puo' durare un
+     * millesimo del piu' lungo senza sparire dall'animazione.
+     */
+    const lunghezze = stores.map((store) => {
+      const da = hubs[store.hub].position;
+      const metriPerGrado = 111_320;
+      return Math.hypot(
+        (store.position[0] - da[0]) * metriPerGrado * Math.cos((da[1] * Math.PI) / 180),
+        (store.position[1] - da[1]) * metriPerGrado,
+      );
+    });
+    const riferimento =
+      [...lunghezze].sort((x, y) => x - y)[Math.floor(lunghezze.length / 2)] || 1;
+
+    return stores.map((store, indice) => {
       const da = hubs[store.hub].position;
       const a = store.position;
 
@@ -303,10 +333,7 @@ export function useSequenza({
       // L'altezza dell'arco e' una **proporzione della sua lunghezza**: con
       // un'altezza uguale per tutti, un collegamento corto riceverebbe una
       // guglia quasi verticale.
-      const metriPerGrado = 111_320;
-      const dx = (a[0] - da[0]) * metriPerGrado * Math.cos((da[1] * Math.PI) / 180);
-      const dy = (a[1] - da[1]) * metriPerGrado;
-      const lunghezza = Math.hypot(dx, dy);
+      const lunghezza = lunghezze[indice];
       const vertice = Math.min(
         dati.verticeMassimo,
         lunghezza * dati.proporzioneArco * (0.65 + store.value * 0.35),
@@ -315,6 +342,7 @@ export function useSequenza({
       const path: [number, number, number][] = [];
       const timestamps: number[] = [];
       const ritardo = store.rango * 90;
+      const durata = DURATA * Math.max(0.3, Math.min(2.4, lunghezza / riferimento));
       for (let i = 0; i < CAMPIONI; i++) {
         const t = i / (CAMPIONI - 1);
         path.push([
@@ -322,7 +350,7 @@ export function useSequenza({
           da[1] + (a[1] - da[1]) * t,
           dati.altezzaSegnaposto + archProfile(t) * vertice,
         ]);
-        timestamps.push(ritardo + t * DURATA);
+        timestamps.push(ritardo + t * durata);
       }
       return { path, timestamps, store };
     });
@@ -572,10 +600,18 @@ export function useSequenza({
           },
           widthUnits: "pixels",
           getWidth: 6,
-          // La scia dura quanto l'intera sequenza: serve un disegno
-          // progressivo, non una cometa. Appena il minimo necessario, pero':
-          // allungarla oltre non cambia niente di visibile e peggiora la
-          // precisione del confronto che decide cosa disegnare.
+          /**
+           * Nessuna dissolvenza lungo la scia.
+           *
+           * Serve un disegno progressivo, non una cometa: quello che e' stato
+           * tracciato resta. Prima lo si otteneva allungando la scia molto
+           * oltre la durata della sequenza, cosi' che la dissolvenza non
+           * arrivasse mai a mordere — ma una scia lunga schiaccia verso lo zero
+           * il confronto che decide cosa disegnare, ed e' da li' che venivano i
+           * mezzi archi fermi sulla mappa. Chiedendo direttamente di non
+           * dissolvere, la scia puo' restare corta quanto serve.
+           */
+          fadeTrail: false,
           trailLength: finePercorsi * 1.05,
           currentTime: rete * finePercorsi,
           updateTriggers: { getColor: [stretta, svanire] },
@@ -641,8 +677,8 @@ export function useSequenza({
           getColor: [238, 244, 250, 225 * globo],
           widthUnits: "pixels",
           getWidth: 3,
-          // Appena il minimo perche' niente svanisca: allungarla peggiora la
-          // precisione del confronto e non cambia niente di visibile.
+          // Come la rete: niente dissolvenza, e scia corta quanto basta.
+          fadeTrail: false,
           trailLength: mondo.fine * 1.05,
           currentTime: giroGlobo * mondo.fine,
           updateTriggers: { getColor: globo },

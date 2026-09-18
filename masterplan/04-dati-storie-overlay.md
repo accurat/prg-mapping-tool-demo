@@ -758,6 +758,37 @@ Due correzioni: i percorsi si tolgono dai dati finché la rete non deve accender
 faceva all'altro estremo quando si spegne; e la scia si accorcia al minimo necessario, perché
 allungarla oltre non cambia niente di visibile e peggiora la precisione del confronto.
 
+### La velocità di tracciamento, non solo il ritmo delle partenze
+
+Restava un secondo effetto, ed era quello vero: **ogni collegamento impiegava lo stesso tempo a
+disegnarsi, qualunque fosse la sua lunghezza**. A ogni istante tutti sono disegnati per la stessa
+*frazione* di sé, e una frazione uguale su lunghezze diverse significa velocità diverse. Il
+collegamento più lungo di questa rete è seicento volte il più corto:
+
+| | Velocità di allungamento sullo schermo |
+| --- | --- |
+| Durata uguale per tutti | da 88 a 1.495 px/s, il più veloce 5,2 volte la mediana |
+| Durata proporzionale alla lunghezza | **circa 500 px/s per quasi tutti**, il più veloce 2,2 volte |
+
+Con la durata uguale, nei primi cento millisecondi le rotte transcontinentali guadagnavano già
+centocinquanta pixel mentre quelle brevi restavano invisibili: a schermo si legge come una
+manciata di archi che compaiono di colpo già fatti mentre gli altri devono ancora cominciare.
+Legando la durata alla lunghezza si allungano tutti alla stessa velocità, e il tracciamento si
+legge come un'unica cosa che cresce. La proporzione è limitata agli estremi, perché un
+collegamento da undici chilometri non può durare un millesimo del più lungo senza sparire
+dall'animazione.
+
+### E la scia non deve dissolvere
+
+Per ottenere «quello che è tracciato resta» si allungava la scia molto oltre la durata della
+sequenza, così che la dissolvenza non arrivasse mai a mordere. Ma è proprio la scia lunga a
+schiacciare verso lo zero il confronto che decide cosa disegnare — la causa dei mezzi archi fermi
+sulla mappa. Accorciandola ricompariva la dissolvenza, con le code degli archi che sbiadivano.
+
+`fadeTrail: false` chiede direttamente quello che serve: nessuna dissolvenza, e la scia può
+restare corta quanto basta. Le due correzioni si annullavano a vicenda solo perché stavo usando un
+parametro per ottenere un effetto che aveva un interruttore suo.
+
 **Lo stesso difetto era anche sugli archi del globo, ed è stato corretto una seconda volta.** Lì
 si manifestava in modo diverso — non archi fermi sulla mappa, ma qualche collegamento che compariva
 già fatto invece di tracciarsi — ed è la ragione per cui non l'avevo riconosciuto subito. La
