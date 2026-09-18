@@ -154,6 +154,14 @@ type Percorso = { path: [number, number, number][]; timestamps: number[]; store:
  * essere disegnato da solo, in qualunque ordine, e questo e' il motivo per cui
  * due copioni diversi possono condividere lo stesso disegno.
  */
+/** Un hub con il suo connettore e il suo nome, per l'inquadratura del paese. */
+export type EtichettaHub = {
+  da: [number, number];
+  a: [number, number];
+  nome: string;
+  aDestra: boolean;
+};
+
 export type Momento = {
   /** Quanto sono emerse le colonne dal terreno, 0..1. */
   salita?: number;
@@ -171,6 +179,8 @@ export type Momento = {
   hub?: number;
   /** Quanto e' ingrandito l'hub rispetto alla sua misura, 1 = misura vera. */
   scalaHub?: number;
+  /** Opacita' delle etichette degli hub, 0..1. Vivono solo sull'inquadratura del paese. */
+  etichette?: number;
 };
 
 export function useSequenza({
@@ -205,6 +215,14 @@ export function useSequenza({
    * ancora l'ultima, e se non lo e' si ritira in silenzio.
    */
   const corsa = useRef(0);
+  /**
+   * L'opacita' delle etichette, in un riferimento e non in uno stato.
+   *
+   * Cambia a ogni fotogramma per un paio di secondi: passarla da React
+   * significherebbe un aggiornamento per fotogramma di un albero che non
+   * cambia forma. Chi la disegna la legge dove sta.
+   */
+  const opacitaEtichette = useRef(0);
 
   useEffect(() => () => cancelAnimationFrame(rafFlusso.current), []);
 
@@ -263,6 +281,50 @@ export function useSequenza({
    * domande — dove c'e' da crescere e dove gia' si lavora — che nei dati veri
    * non coincidono quasi mai.
    */
+  /**
+   * Dove si appoggiano le etichette degli hub.
+   *
+   * Su un anello attorno al gruppo, ciascuna nella direzione in cui gia' sta il
+   * proprio hub rispetto al centro: cosi' non si incrociano e ognuna cade dalla
+   * parte giusta. La distanza e' proporzionale all'estensione del gruppo e non
+   * a una misura in pixel, perche' le etichette esistono solo in
+   * un'inquadratura e li' la proporzione basta.
+   *
+   * Oltre una dozzina di hub non si mettono: cinquanta etichette su una vista
+   * nazionale non identificano niente, coprono tutto.
+   */
+  const etichetteHub = useMemo(() => {
+    if (hubs.length > 12) return [];
+    const cx = hubs.reduce((s, h) => s + h.position[0], 0) / hubs.length;
+    const cy = hubs.reduce((s, h) => s + h.position[1], 0) / hubs.length;
+    const raggio = Math.max(
+      0.6,
+      ...hubs.map((h) => Math.hypot(h.position[0] - cx, h.position[1] - cy)),
+    );
+    return hubs.map((h, i) => {
+      const dx = h.position[0] - cx;
+      const dy = h.position[1] - cy;
+      const lunghezza = Math.hypot(dx, dy);
+      // Un hub esattamente al centro non ha una direzione: gli si assegna il
+      // proprio posto sull'anello per indice, invece di lasciarlo decidere a
+      // una divisione per zero.
+      const angolo = lunghezza < 1e-6 ? (i / hubs.length) * Math.PI * 2 : Math.atan2(dy, dx);
+      // Abbastanza lontane da non toccarsi fra loro ne' coprire i punti che
+      // stanno indicando: con gli hub raggruppati, e' la distanza dell'anello
+      // a fare tutto il lavoro di separazione.
+      const distanza = raggio * 3.2;
+      return {
+        da: h.position,
+        a: [cx + Math.cos(angolo) * distanza, cy + Math.sin(angolo) * distanza * 0.85] as [
+          number,
+          number,
+        ],
+        nome: dati.nomiHub[i] ?? `${i + 1}`,
+        aDestra: Math.cos(angolo) >= 0,
+      } satisfies EtichettaHub;
+    });
+  }, [hubs, dati.nomiHub]);
+
   const superstiti = useMemo(() => {
     const suoi = stores.filter((s) => s.hub === dati.fuoco);
     const perPotenziale = [...suoi].sort((a, b) => b.value - a.value).slice(0, 6);
@@ -320,7 +382,9 @@ export function useSequenza({
         flusso = 0,
         svanire = 0,
         scalaHub = 1,
+        etichette = 0,
       } = momento;
+      opacitaEtichette.current = etichette;
       // L'hub ha una vita propria, dichiarata momento per momento: compare
       // durante la discesa, molto prima dei negozi, e resta li' anche quando
       // le celle tornano alte alla fine. Non segue nessun'altra grandezza —
@@ -614,7 +678,12 @@ export function useSequenza({
     // La sosta. Senza, il paese sarebbe solo un fotogramma di passaggio e
     // nessuno in sala avrebbe il tempo di capire dove si sta andando.
     setFase("paese");
-    await attendi(2000);
+    await anima(
+      700,
+      (dolce) => disegna({ hub: 1, scalaHub: dati.ingrandimentoHub, etichette: dolce }),
+      viva,
+    );
+    await attendi(1300);
     if (!viva()) return;
 
     setFase("discesa");
@@ -625,22 +694,36 @@ export function useSequenza({
       duration: 3000,
       essential: true,
     });
-    // Gli hub tornano alla loro misura vera mentre ci si avvicina.
-    //
-    // Nell'inquadratura del paese sono ingranditi perche' alla loro misura
-    // sarebbero meno di un pixel: un punto che non si vede non e' un punto
-    // discreto, e' un punto assente. Scendendo, il territorio fa il lavoro da
-    // solo e l'ingrandimento diventa una bugia, quindi si riassorbe insieme
-    // al volo invece di sparire a destinazione.
+    /**
+     * Gli hub tornano alla loro misura vera mentre ci si avvicina, e le
+     * etichette se ne vanno.
+     *
+     * Il ridimensionamento **segue lo zoom, non il tempo**. Il volo di MapLibre
+     * non attraversa gli zoom in modo uniforme — parte piano, accelera e frena
+     * — quindi una scala guidata da una curva temporale, per quanto ben
+     * scelta, resta indietro o va avanti rispetto al terreno che si allarga
+     * sotto. Chiedendo alla mappa dove si trova a ogni fotogramma, le due cose
+     * non possono che coincidere.
+     */
+    const zoomPartenza = m.getZoom();
+    const arco = dati.zoomArrivo - zoomPartenza;
     await anima(
       3000,
-      (dolce) =>
+      () => {
+        const avanzamento =
+          arco === 0 ? 1 : Math.max(0, Math.min(1, (m.getZoom() - zoomPartenza) / arco));
         disegna({
           hub: 1,
-          scalaHub: dati.ingrandimentoHub + (1 - dati.ingrandimentoHub) * dolce,
-        }),
+          scalaHub: dati.ingrandimentoHub + (1 - dati.ingrandimentoHub) * avanzamento,
+          // Le etichette se ne vanno per prime: servivano a distinguere dei
+          // punti lontani, e appena il volo comincia non sono piu' quello che
+          // si sta guardando.
+          etichette: Math.max(0, 1 - avanzamento / 0.3),
+        });
+      },
       viva,
     );
+    disegna({ hub: 1 });
     await attendi(200);
     if (!viva()) return;
 
@@ -764,5 +847,5 @@ export function useSequenza({
     return () => window.removeEventListener("keydown", suTasto);
   }, [esegui]);
 
-  return { fase, prefetchMs, esegui };
+  return { fase, prefetchMs, esegui, etichetteHub, opacitaEtichette };
 }

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Hud, HudPanel, Row, fpsTone } from "@/components/lab/Hud";
 import { MapSurface, type MapHandle } from "@/components/lab/MapSurface";
 import { Stage } from "@/components/lab/Stage";
+import { EtichetteHub } from "@/components/scena/EtichetteHub";
 import { makeStoreNetwork } from "@/lib/lab/network";
 import { useFrameMeter } from "@/lib/lab/useFrameMeter";
 import { useRenderTrust } from "@/lib/lab/useRenderTrust";
@@ -42,6 +43,9 @@ export default function T10Page() {
     const fuoco = medie.indexOf(Math.max(...medie));
     return {
       hubs,
+      // Dati finti, nomi finti: inventare nomi di citta' vere su posizioni
+      // inventate renderebbe la prova piu' convincente di quanto sia.
+      nomiHub: hubs.map((_, i) => `Centro ${i + 1}`),
       stores,
       indiciStore: new Int32Array(0),
       indiciPerHub: [],
@@ -53,7 +57,7 @@ export default function T10Page() {
       zoomFuoco: 9.6,
       raggioStore: 2600,
       raggioHub: 6000,
-      ingrandimentoHub: 6,
+      ingrandimentoHub: 4.5,
       altezzaDato: 26000,
       altezzaSegnaposto: 3000,
     };
@@ -65,7 +69,12 @@ export default function T10Page() {
     setMap(m);
   }, []);
 
-  const { fase, prefetchMs, esegui } = useSequenza({ map, labelId, dati, inclinazione });
+  const { fase, prefetchMs, esegui, etichetteHub, opacitaEtichette } = useSequenza({
+    map,
+    labelId,
+    dati,
+    inclinazione,
+  });
 
   useEffect(() => {
     const suTasto = (e: KeyboardEvent) => {
@@ -91,13 +100,22 @@ export default function T10Page() {
   return (
     <main className="h-screen w-screen overflow-hidden bg-black">
       <Stage width={WIDTH} height={HEIGHT}>
-        <MapSurface
-          width={WIDTH}
-          height={HEIGHT}
-          styleUrl={STYLE}
-          projection="globe"
-          onReady={handleReady}
-        />
+        <div className="relative" style={{ width: WIDTH, height: HEIGHT }}>
+          <MapSurface
+            width={WIDTH}
+            height={HEIGHT}
+            styleUrl={STYLE}
+            projection="globe"
+            onReady={handleReady}
+          />
+          <EtichetteHub
+            map={map}
+            etichette={etichetteHub}
+            opacita={opacitaEtichette}
+            larghezza={WIDTH}
+            altezza={HEIGHT}
+          />
+        </div>
       </Stage>
 
       <Hud>

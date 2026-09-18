@@ -5,6 +5,7 @@ import { measure, wait, type Sample } from "@/lib/lab/measure";
 import { Hud, HudPanel, Row, fpsTone } from "@/components/lab/Hud";
 import { MapSurface, type MapHandle } from "@/components/lab/MapSurface";
 import { Stage } from "@/components/lab/Stage";
+import { EtichetteHub } from "@/components/scena/EtichetteHub";
 import { Barre, type Voce } from "@/components/viz/Barre";
 import { Cornice, Pannello, Riga, Striscia } from "@/components/wall/Cornice";
 import { COLORI, TIPI } from "@/components/wall/tokens";
@@ -162,7 +163,11 @@ function Scena({
   trust: ReturnType<typeof useRenderTrust>;
 }) {
   const { dataset, glossario, scena } = caricato;
-  const { fase, prefetchMs } = useSequenza({ map, labelId, dati: scena });
+  const { fase, prefetchMs, etichetteHub, opacitaEtichette } = useSequenza({
+    map,
+    labelId,
+    dati: scena,
+  });
 
   const [pannelli, setPannelli] = useState(true);
   const [sfocatura, setSfocatura] = useState(false);
@@ -321,6 +326,13 @@ function Scena({
             styleUrl={STYLE}
             projection="globe"
             onReady={onReady}
+          />
+          <EtichetteHub
+            map={map}
+            etichette={etichetteHub}
+            opacita={opacitaEtichette}
+            larghezza={WIDTH}
+            altezza={HEIGHT}
           />
           <Cornice
             larghezza={WIDTH}

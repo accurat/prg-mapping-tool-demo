@@ -483,12 +483,44 @@ avvicina.** Alla misura vera sarebbero meno di un pixel, e un punto che non si v
 punto discreto, è un punto assente. Scendendo, il territorio fa il lavoro da solo e
 l'ingrandimento diventa una bugia: si riassorbe insieme al volo invece di sparire a destinazione.
 
+**Il ridimensionamento segue lo zoom, non il tempo.** Il volo di MapLibre non attraversa gli zoom
+in modo uniforme — parte piano, accelera, frena — quindi una scala guidata da una curva temporale,
+per quanto ben scelta, resta indietro o va avanti rispetto al terreno che si allarga sotto.
+Chiedendo alla mappa dove si trova a ogni fotogramma, le due cose non possono che coincidere.
+
 Quanto ingrandirli **sta nei dati della scena, non nella sequenza**, perché dipende dalla scala:
 un hub da cinquantadue chilometri a zoom nazionale è già un disco visibile e gli basta un ritocco
 (1,6×), uno da sei chilometri ha bisogno di sei volte la propria misura per esistere. Lo stesso
 numero per entrambe sarebbe sbagliato per tutte e due.
 
 La discesa passa da 6,2 a 8,2 secondi: 2,8 fino al paese, 2,0 di sosta, 3,0 fino all'area.
+
+## I nomi degli hub, solo sul paese
+
+Su quell'inquadratura i punti di rifornimento sono lontani e piccoli, e senza un nome sono macchie
+uguali fra loro. Compaiono quindi dei connettori con il nome, in dissolvenza, e **se ne vanno per
+primi appena il volo riparte**: servivano a distinguere dei punti lontani, e da vicino il
+territorio dice già dove si è — un'etichetta che resta diventa un ingombro proprio sopra la cosa
+che si è venuti a guardare.
+
+Le etichette stanno su un anello attorno al gruppo, ciascuna nella direzione in cui già sta il
+proprio hub rispetto al centro, così non si incrociano. Oltre una dozzina di hub non si mettono
+affatto: cinquanta etichette su una vista nazionale non identificano niente, coprono tutto — ed è
+il motivo per cui nella scena vera, che ha cinquanta destinazioni, non compaiono.
+
+### Il TextLayer di deck.gl non funziona in questa scena
+
+Tentativo fallito, e vale la pena scriverlo perché **fallisce in silenzio**: il `TextLayer` non
+riesce a costruire il proprio atlante dei caratteri — `WebGL: INVALID_VALUE: texSubImage2D: no
+canvas` a console — e le etichette restano invisibili senza che niente si rompa. Provato con
+l'insieme di caratteri dichiarato invece che dedotto, e con l'atlante a campo di distanza: stesso
+esito.
+
+Le etichette sono quindi **testo del documento**, sopra il canvas, con le posizioni ricalcolate a
+ogni fotogramma finché si vedono. Anche funzionando, il TextLayer sarebbe stata la scelta
+peggiore: così il testo resta nitido a qualsiasi scala, usa gli stessi corpi del muro e quindi la
+stessa soglia dei 36 pixel, e T12 ha misurato che comporre testo sopra il canvas non costa
+fotogrammi.
 
 ---
 

@@ -21,11 +21,14 @@
 import { potenziale } from "../data/metrics.ts";
 import type { Dataset, Rotte } from "../data/schema.ts";
 import { scalaAltezze } from "../data/aggregate.ts";
+import { nomeDominante } from "../stories/contesto.ts";
 import { distanzaKm } from "../stories/index.ts";
 import type { Hub, Store } from "../lab/network.ts";
 
 export type DatiScena = {
   hubs: Hub[];
+  /** Il nome di ciascun hub, per le etichette dell'inquadratura del paese. */
+  nomiHub: string[];
   stores: Store[];
   /** Gli indici nel dataset, paralleli a `stores`: servono ai pannelli. */
   indiciStore: Int32Array;
@@ -112,6 +115,7 @@ export function costruisciScena(d: Dataset, rotte: Rotte): DatiScena {
 
   return {
     hubs,
+    nomiHub: destinazioni.map((indice) => nomeDominante(d, [indice])),
     stores,
     indiciStore,
     indiciPerHub: perHub.map((v) => Int32Array.from(v)),
