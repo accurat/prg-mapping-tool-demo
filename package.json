@@ -8,8 +8,9 @@
     "start": "next start",
     "lint": "eslint",
     "sync:maplibre": "node scripts/sync-maplibre-worker.mjs",
-    "predev": "node scripts/sync-maplibre-worker.mjs",
-    "prebuild": "node scripts/sync-maplibre-worker.mjs"
+    "predev": "node scripts/sync-maplibre-worker.mjs && node scripts/build-dataset.mjs",
+    "prebuild": "node scripts/sync-maplibre-worker.mjs && node scripts/build-dataset.mjs",
+    "build:dataset": "node scripts/build-dataset.mjs"
   },
   "dependencies": {
     "deck.gl": "^9.4.0",

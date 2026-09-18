@@ -40,19 +40,61 @@ Verificato riga per riga:
 - **`size_of_prize` è `null` su tutte le 10.466 righe.**
 - **`share_gap` è `0` su tutte le 10.466 righe.**
 
-Risponde in negativo a una delle domande aperte al cliente in `03-risultati.md`. Non blocca
-niente, perché il potenziale inespresso si ricava dalle colonne che ci sono, ed è la definizione
+Non è una scoperta: il concept lo aveva già rilevato e documentato in §7.3, insieme ad altre due
+colonne vuote (`store_ttl_hhd` e `store_sales_by_ttl_hhd`). Quello che aggiungiamo qui è la
+verifica indipendente sul file e il calcolo del ripiego. Resta aperta la domanda al cliente, che
+riguarda la **produzione**: se lì quelle colonne sono valorizzate, diventano la definizione
+preferibile. Non blocca niente, perché il potenziale inespresso si ricava dalle colonne che ci sono, ed è la definizione
 già scelta nel concept (§2.2): la differenza fra la quota del negozio e la quota del proprio
 bacino, applicata al fatturato del bacino.
 
-Il calcolo, eseguito sul dataset:
+### Le quote pronte sono arrotondate al punto da non essere usabili
 
-- **6.518 negozi su 10.466 sotto la quota del proprio bacino — il 62,3%**;
-- **circa 150 M$ di potenziale inespresso complessivo.**
+Il concept (§2.2 a) calcola il potenziale da due colonne di quota: quella realizzata dentro il
+negozio e quella realizzata nel bacino. Quelle colonne esistono e sono complete, ma sono
+**arrotondate a due decimali**, e a questa scala l'arrotondamento non è un dettaglio:
 
-Il 62% citato nel concept viene da qui, quindi la definizione regge e il numero si riproduce.
-Va detto al cliente che le due colonne pronte sono vuote e che il valore lo calcoliamo noi: è una
-differenza di responsabilità, non solo di implementazione.
+| Colonna | Valori distinti su 10.466 negozi |
+| --- | --- |
+| `store_numer_sales_usd_share_pct` | 53 |
+| `trade_area_numer_sales_usd_share_pct` | 22 |
+
+La quota tipica di un negozio è 0,02% e quella del suo bacino 0,07%. La differenza fra le due —
+cioè esattamente il potenziale inespresso — vale uno o due scalini di arrotondamento. **L'errore
+sarebbe grande quanto la grandezza misurata.**
+
+Gli importi da cui quelle quote derivano sono però presenti, completi e non arrotondati. Il
+passo di preparazione trasporta quelli, e la quota si calcola a precisione piena. Stessa
+definizione del concept, numeri diversi:
+
+| | Dalle colonne arrotondate | Dagli importi |
+| --- | --- | --- |
+| Negozi sotto la quota del proprio bacino | 6.518 (62,3%) | **5.689 (54,4%)** |
+| Potenziale inespresso complessivo | 150 M$ | **2,0 M$** |
+
+**Il 62% e i «circa 200 milioni» scritti nel concept vanno corretti.** Il 62% è un artefatto
+dell'arrotondamento. Il valore in denaro lo è due volte, perché nasce anche da un secondo errore:
+i punti di quota mancanti moltiplicati per il fatturato del **bacino** invece che per quello del
+**negozio**. Il concept dice giustamente «× fatturato del negozio», ma il numero citato non viene
+da lì — applicare la formula giusta agli importi giusti dà 2,0 M$, applicarla al bacino ne dà 110.
+
+Due milioni sembra poco solo finché non si guarda la scala giusta: le vendite P&G in questi
+10.466 negozi sono **9,67 M$** in tutto, su 13,1 miliardi di fatturato complessivo dei negozi —
+una quota dello 0,074%. Il potenziale inespresso è quindi **+21% sulle vendite P&G attuali**,
+che come titolo di una sessione funziona meglio di una cifra assoluta grande e sbagliata.
+
+Conseguenza pratica per i layout: gli esempi del documento dei layout parlano di «4,2 M$
+inespressi» per un'area. Con i numeri veri un'area vale qualche migliaio di dollari, e il
+formato delle etichette va rifatto di conseguenza.
+
+### Altre due cose emerse dal file
+
+- **1.032 negozi su 10.466 hanno vendite a zero.** Non hanno una quota, quindi non hanno un
+  potenziale: vanno esclusi dal calcolo invece di entrarci come zero, che li farebbe sembrare
+  negozi perfettamente allineati al proprio bacino.
+- **Le 500 rotte si agganciano tutte**, su entrambi gli estremi, con 50 destinazioni e 550
+  negozi toccati in tutto. Lo strato della rete copre quindi il 5% dei negozi, come il concept
+  (§7.4) aveva previsto.
 
 ### Un rischio nuovo, che nessun test precedente ha toccato
 

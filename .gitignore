@@ -48,3 +48,7 @@ next-env.d.ts
 # di masterplan/03-risultati.md, e pesano poche decine di kilobyte.
 /masterplan/results/frames/
 /masterplan/results/runs.jsonl
+
+# I dati del cliente non stanno in questo repository: si rigenerano da
+# scripts/build-dataset.mjs a partire dal repository del tool 2025.
+/public/data
