@@ -575,10 +575,10 @@ export function useSequenza({
           data: globo > 0.002 ? mondo.archi : [],
           getPath: (a) => a.path,
           getTimestamps: (a) => a.timestamps,
-          getColor: (a) => {
-            const c = coloreValore(a.valore);
-            return [c[0], c[1], c[2], 220 * globo];
-          },
+          // Bianchi, non nella scala del valore: qui non misurano niente, e
+          // dare loro la tinta che altrove significa «quanto vale» sarebbe un
+          // falso indizio nel momento in cui la sala impara a leggere i colori.
+          getColor: [238, 244, 250, 225 * globo],
           widthUnits: "pixels",
           getWidth: 3,
           trailLength: mondo.fine * 2,
@@ -738,7 +738,7 @@ export function useSequenza({
       bearing: 0,
     });
     await anima(
-      5000,
+      8000,
       (_dolce, lineare) => {
         // Non la curva addolcita: quella parte lenta, e un globo che parte
         // lento sembra fermo. Questa parte alla sua velocita' e frena.

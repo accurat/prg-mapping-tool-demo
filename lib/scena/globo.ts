@@ -103,16 +103,43 @@ export function costruisciGlobo({ collegamenti = 18, seed = 7 } = {}): ScenaGlob
 
   const CAMPIONI = 40;
   const SPAN = 100;
+
+  /**
+   * Quali coppie si possono collegare.
+   *
+   * Sotto il minimo il collegamento e' un trattino che non si vede; sopra il
+   * massimo diventa un problema vero. Un percorso che supera il quarto di
+   * circonferenza si avvolge attorno al pianeta e, sollevato da terra, esce
+   * dalla sagoma e ricompare dall'altra parte: a schermo non si legge come una
+   * rotta ma come un'aureola attorno al globo. Il limite tiene ogni
+   * collegamento dentro la faccia che si sta guardando.
+   */
+  const MINIMA = 2_000_000;
+  const MASSIMA = 8_500_000;
+
   const archi: ArcoGlobo[] = [];
   for (let k = 0; k < collegamenti; k++) {
     const da = nodi[k % nodi.length];
-    const a = nodi[(k * 7 + 3) % nodi.length];
-    if (da === a) continue;
+
+    // Si cerca il primo compagno a distanza utile a partire da una posizione
+    // decisa dall'indice: deterministico, e senza coppie scartate a vuoto.
+    let a: NodoGlobo | null = null;
+    for (let passo = 0; passo < nodi.length; passo++) {
+      const candidato = nodi[(k * 7 + 3 + passo) % nodi.length];
+      if (candidato === da) continue;
+      const d = distanzaM(da.position, candidato.position);
+      if (d >= MINIMA && d <= MASSIMA) {
+        a = candidato;
+        break;
+      }
+    }
+    if (!a) continue;
 
     const lunghezza = distanzaM(da.position, a.position);
-    // Un arco basso: a questa scala una quota alta esce dalla sagoma del
-    // pianeta e il collegamento smette di sembrare appoggiato al mondo.
-    const vertice = lunghezza * 0.09;
+    // Un arco basso, e comunque limitato: a questa scala una quota alta esce
+    // dalla sagoma del pianeta e il collegamento smette di sembrare appoggiato
+    // al mondo.
+    const vertice = Math.min(420_000, lunghezza * 0.09);
     const path: [number, number, number][] = [];
     const timestamps: number[] = [];
     // Ogni collegamento parte per conto suo: e' quello che li fa apparire

@@ -451,7 +451,7 @@ video integrata.
 # L'apertura sul globo
 
 Prima della discesa c'è ora un momento in cui **il mondo gira**, con nodi sui continenti e
-collegamenti che si tracciano uno alla volta. Dura cinque secondi.
+collegamenti che si tracciano uno alla volta. Dura otto secondi.
 
 La rotazione **porta il paese davanti** invece di fermarsi e lasciare il lavoro alla discesa: si
 parte da settanta gradi di longitudine più a est e si arriva esattamente a quella di
@@ -462,6 +462,16 @@ quella parte lenta e un globo che parte lento sembra fermo.
 Lo zoom dell'apertura è più alto di quello da cui parte il corridoio: a 0,4 il pianeta occupa un
 quarto dell'altezza del muro, che va bene per un fotogramma di passaggio e non per cinque secondi
 in cui il globo è il soggetto.
+
+I collegamenti hanno una **distanza minima e una massima**. Il massimo non è estetica: un
+percorso che supera il quarto di circonferenza si avvolge attorno al pianeta e, sollevato da
+terra, esce dalla sagoma e ricompare dall'altra parte — a schermo non si legge come una rotta ma
+come un'aureola attorno al globo. Il limite tiene ogni collegamento dentro la faccia che si sta
+guardando, e la quota è comunque tagliata a un valore assoluto.
+
+Sono **bianchi**, non nella scala caldo-freddo del valore: qui non misurano niente, e dare loro la
+tinta che altrove significa «quanto vale» sarebbe un falso indizio proprio nel momento in cui la
+sala impara a leggere i colori.
 
 **I dati del globo sono decorativi, e non lo nascondono.** Le posizioni sono coordinate di città
 vere — servono a non piantare nodi in mezzo all'oceano, che si vedrebbe subito — ma i
