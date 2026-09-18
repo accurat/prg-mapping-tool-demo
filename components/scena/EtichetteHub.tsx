@@ -96,8 +96,8 @@ export function EtichetteHub({
               ref={(el) => {
                 if (el) nodi.current[i] = { ...(nodi.current[i] ?? {}), linea: el } as never;
               }}
-              stroke={COLORI.accento}
-              strokeOpacity={0.75}
+              stroke={COLORI.testo}
+              strokeOpacity={0.7}
               strokeWidth={3}
             />
             <text
