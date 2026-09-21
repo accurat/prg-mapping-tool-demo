@@ -185,8 +185,14 @@ const LUCE = new LightingEffect({
      * La componente verticale resta negativa — la luce scende comunque — ma di
      * poco: una luce quasi radente lascia visibile la differenza fra le facce
      * e non appiattisce i volumi come farebbe una luce a picco.
+     *
+     * Lateralmente e' quasi centrata, con un filo di spostamento a sinistra.
+     * Una luce perfettamente frontale illumina allo stesso modo ogni faccia
+     * rivolta alla camera e i volumi si appiattiscono: un esagono diventa una
+     * macchia. Un filo di sbieco basta a far leggere lo spigolo, senza che la
+     * luce si annunci come proveniente da una parte.
      */
-    direction: [-1, 2.4, -0.7],
+    direction: [0.3, 2.4, -0.7],
     _shadow: false,
   }),
 });
