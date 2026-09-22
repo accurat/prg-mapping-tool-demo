@@ -14,6 +14,15 @@ const TESTS = [
   { id: "t10", title: "Sequenza completa", desc: "Discesa, colonne, appiattimento, rete a stella", ready: true },
 ];
 
+const PROTOTYPES = [
+  {
+    id: "p0",
+    title: "Overview USA",
+    desc: "Discesa sul continente e colonne store dal dataset reale",
+    ready: true,
+  },
+];
+
 export default function Home() {
   return (
     <main className="mx-auto max-w-3xl px-6 py-16 font-mono text-sm">
@@ -39,6 +48,34 @@ export default function Home() {
                 <span className="w-8 shrink-0 uppercase">{t.id}</span>
                 <span className="w-56 shrink-0">{t.title}</span>
                 <span>{t.desc}</span>
+              </div>
+            )}
+          </li>
+        ))}
+      </ul>
+
+      <p className="mt-12 text-black/60 dark:text-white/60">
+        Prototipo prodotto. Sequenza di apertura su dati reali, senza il resto della
+        strumentazione di laboratorio.
+      </p>
+
+      <ul className="mt-4 space-y-1">
+        {PROTOTYPES.map((p) => (
+          <li key={p.id}>
+            {p.ready ? (
+              <Link
+                href={`/${p.id}`}
+                className="flex items-baseline gap-4 rounded px-3 py-2 hover:bg-black/5 dark:hover:bg-white/10"
+              >
+                <span className="w-8 shrink-0 uppercase text-black/40 dark:text-white/40">{p.id}</span>
+                <span className="w-56 shrink-0">{p.title}</span>
+                <span className="text-black/50 dark:text-white/50">{p.desc}</span>
+              </Link>
+            ) : (
+              <div className="flex items-baseline gap-4 px-3 py-2 opacity-35">
+                <span className="w-8 shrink-0 uppercase">{p.id}</span>
+                <span className="w-56 shrink-0">{p.title}</span>
+                <span>{p.desc}</span>
               </div>
             )}
           </li>
