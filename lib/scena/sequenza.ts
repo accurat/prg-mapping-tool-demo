@@ -53,7 +53,7 @@ export const ZOOM_GLOBO = 1.6;
  * si scendera' mai. Quello che avanza ai lati — Canada, Messico, oceano — non
  * e' un problema: e' il contesto.
  */
-const BORDI_PAESE: [[number, number], [number, number]] = [
+export const BORDI_PAESE: [[number, number], [number, number]] = [
   [-125.0, 24.4],
   [-66.9, 49.4],
 ];
@@ -72,7 +72,7 @@ const BORDI_PAESE: [[number, number], [number, number]] = [
  * Con pochi punti — i superstiti di una stella — non si taglia niente: li'
  * ogni punto e' uno dei pochi che si vogliono vedere.
  */
-function riquadroDi(
+export function riquadroDi(
   punti: [number, number][],
   quota = 0,
 ): [[number, number], [number, number]] {
@@ -168,7 +168,7 @@ function archProfile(t: number): number {
  * disegnare qualsiasi cosa. Va scelta una volta e lasciata stare, come
  * qualsiasi altro oggetto di deck.gl che non si ricrea a ogni fotogramma.
  */
-const LUCE = new LightingEffect({
+export const LUCE = new LightingEffect({
   ambient: new AmbientLight({ color: [255, 255, 255], intensity: 1.0 }),
   sun: new DirectionalLight({
     color: [255, 255, 255],

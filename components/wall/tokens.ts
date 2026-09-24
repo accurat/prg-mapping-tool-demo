@@ -22,6 +22,8 @@ export const TIPI = {
   numero: 72,
   /** Titoli e nomi di luogo. */
   titolo: 96,
+  /** Il numero che e' la ragione della storia: il primo che la sala legge. */
+  eroe: 150,
 } as const;
 
 export const COLORI = {

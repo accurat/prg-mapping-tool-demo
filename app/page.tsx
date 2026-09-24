@@ -14,6 +14,7 @@ const TESTS = [
   { id: "t10", title: "Full sequence", desc: "Merged into T12: same sequence, real data", ready: false },
   { id: "t11", title: "The stories", desc: "Drawn from the real data, deterministic, each with its staging", ready: true },
   { id: "t12", title: "The scene", desc: "Globe, descent, relief, network, panels. Real data, and what it costs to compose them", ready: true },
+  { id: "t13", title: "The story tour", desc: "The stories drive the camera: one flight per story, each with its stores and its layer", ready: true },
 ];
 
 export default function Home() {
