@@ -48,6 +48,8 @@ export function Stage({
           transform: `scale(${scale})`,
           transformOrigin: "center center",
           flex: "none",
+          // stroke in pixel schermo: 1px indipendentemente dallo scale ottico
+          boxShadow: scale > 0 ? `0 0 0 ${1 / scale}px white` : undefined,
         }}
       >
         {children}
