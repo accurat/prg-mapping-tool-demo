@@ -144,7 +144,7 @@ export function AloneGlobo({
       aria-hidden
     >
       <defs>
-        <radialGradient id="t13-alone">
+        <radialGradient id="alone-globo">
           <stop offset={0} stopColor="rgb(120, 170, 255)" stopOpacity={0} />
           {PASSI.map(([, opacita], i) => (
             <stop
@@ -160,7 +160,7 @@ export function AloneGlobo({
         </radialGradient>
       </defs>
       <g ref={gruppo} style={{ opacity: 0 }}>
-        <ellipse ref={ellisse} fill="url(#t13-alone)" />
+        <ellipse ref={ellisse} fill="url(#alone-globo)" />
       </g>
     </svg>
   );

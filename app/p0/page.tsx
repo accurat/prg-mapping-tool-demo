@@ -6,12 +6,22 @@ import {
   DirectionalLight,
   LightingEffect,
   MapLibreOverlay,
+  PathLayer,
+  ScatterplotLayer,
 } from "deck.gl";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Hud, HudPanel, Row, fpsTone } from "@/components/lab/Hud";
+import {
+  P0NavMenu,
+  type P0DataMode,
+  type P0MapView,
+} from "@/components/lab/P0NavMenu";
 import { MapSurface, type MapHandle } from "@/components/lab/MapSurface";
 import { Stage } from "@/components/lab/Stage";
+import { AloneGlobo } from "@/components/tour/AloneGlobo";
+import { leggiBordoDaOverlay } from "@/lib/lab/bordoGlobo";
 import { under } from "@/lib/lab/map";
+import { loadRealNetwork, type NetworkLink, type NetworkNode } from "@/lib/lab/realNetwork";
 import { loadRealStores, type RealStore } from "@/lib/lab/realStores";
 import { useFrameMeter } from "@/lib/lab/useFrameMeter";
 import { useRenderTrust } from "@/lib/lab/useRenderTrust";
@@ -75,9 +85,18 @@ function makeLighting() {
 
 const LIGHT = makeLighting();
 
-/** Colore caldo-freddo su 0..1 (stessa scala di t10). */
+/** Scala colonne: bassi #28218E → alti #35778E. */
+const COLOR_LOW: [number, number, number] = [0x28, 0x21, 0x8e];
+const COLOR_HIGH: [number, number, number] = [0x35, 0x77, 0x8e];
+
 function valueColor(t: number, alpha = 235): [number, number, number, number] {
-  return [40 + t * 215, 70 + t * 95, 195 - t * 150, alpha];
+  const u = Math.max(0, Math.min(1, t));
+  return [
+    COLOR_LOW[0] + (COLOR_HIGH[0] - COLOR_LOW[0]) * u,
+    COLOR_LOW[1] + (COLOR_HIGH[1] - COLOR_LOW[1]) * u,
+    COLOR_LOW[2] + (COLOR_HIGH[2] - COLOR_LOW[2]) * u,
+    alpha,
+  ];
 }
 
 /** Interpola longitudine sul percorso piu' corto (gestisce l'antimeridiano). */
@@ -92,11 +111,43 @@ function lerpLng(from: number, to: number, t: number) {
   return from + delta * t;
 }
 
+/**
+ * Profilo di altezza dell'arco (superellisse): sotto vista globo l'ArcLayer
+ * non disegna, i percorsi si'.
+ */
+function archProfile(t: number) {
+  const EXPONENT = 2.05;
+  const x = Math.abs(t * 2 - 1);
+  return Math.pow(Math.max(0, 1 - Math.pow(x, EXPONENT)), 1 / EXPONENT);
+}
+
+type NetworkPath = {
+  path: [number, number, number][];
+  weight: number;
+};
+
+function linkToPath(link: NetworkLink, samples = 28): NetworkPath {
+  const apex = 140_000 * (0.4 + link.weight * 0.6);
+  const path = Array.from({ length: samples }, (_, s) => {
+    const t = samples === 1 ? 0 : s / (samples - 1);
+    const lng = link.source[0] + (link.target[0] - link.source[0]) * t;
+    const lat = link.source[1] + (link.target[1] - link.source[1]) * t;
+    return [lng, lat, archProfile(t) * apex] as [number, number, number];
+  });
+  return { path, weight: link.weight };
+}
+
 export default function P0Page() {
   const [map, setMap] = useState<MapHandle | null>(null);
   const [phase, setPhase] = useState<Phase>("orbita");
   const [labelId, setLabelId] = useState<string | undefined>();
   const [stores, setStores] = useState<RealStore[] | null>(null);
+  const [network, setNetwork] = useState<{
+    links: NetworkLink[];
+    nodes: NetworkNode[];
+  } | null>(null);
+  const [dataMode, setDataMode] = useState<P0DataMode>("stores");
+  const [mapView, setMapView] = useState<P0MapView>("globe");
   const [loadError, setLoadError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -104,6 +155,8 @@ export default function P0Page() {
   const runId = useRef(0);
   const spinning = useRef(false);
   const spinRaf = useRef(0);
+  /** Intensita' base dell'alone: acceso subito, senza fade-in. */
+  const aloneRef = useRef(1);
 
   const { stats } = useFrameMeter();
   const trust = useRenderTrust(stats.medianMs);
@@ -128,6 +181,12 @@ export default function P0Page() {
 
   const handleReady = useCallback((m: MapHandle) => {
     m.jumpTo({ center: [TARGET[0], ORBIT_LAT], zoom: START_ZOOM, pitch: 0, bearing: 0 });
+    // allinea il vuoto attorno al globo allo sfondo di pagina
+    try {
+      m.setPaintProperty("background", "background-color", "#171A2D");
+    } catch {
+      // stile senza layer background: ignora
+    }
     const layers = m.getStyle().layers ?? [];
     // niente toponimi a overview/globo: a questa scala sono solo rumore
     layers
@@ -150,11 +209,23 @@ export default function P0Page() {
     });
     map.addControl(overlay);
     overlayRef.current = overlay;
+
     return () => {
       overlayRef.current = null;
       map.removeControl(overlay);
     };
   }, [map]);
+
+  const bordoGlobo = useCallback(() => {
+    // in vista mappa piatta l'alone non ha senso
+    if (mapView !== "globe") {
+      return null;
+    }
+    return leggiBordoDaOverlay(
+      overlayRef.current as unknown as Parameters<typeof leggiBordoDaOverlay>[0],
+      aloneRef.current,
+    );
+  }, [mapView]);
 
   const stopSpin = useCallback(() => {
     spinning.current = false;
@@ -194,10 +265,7 @@ export default function P0Page() {
 
   useEffect(() => () => stopSpin(), [stopSpin]);
 
-  /**
-   * Disegna le colonne. `rise` 0..1 controlla fade + altezza dopo l'arrivo.
-   */
-  const draw = useCallback(
+  const drawStores = useCallback(
     (rise: number, data: RealStore[]) => {
       const overlay = overlayRef.current;
       if (!overlay) {
@@ -205,11 +273,13 @@ export default function P0Page() {
       }
 
       const ease = rise * rise * (3 - 2 * rise);
+      // id diverso per vista: deck.gl altrimenti tiene il clip circolare del globo
+      const viewKey = mapView === "globe" ? "globe" : "map";
 
       overlay.setProps({
         layers: [
           new ColumnLayer<RealStore>({
-            id: "negozi",
+            id: `negozi-${viewKey}`,
             data,
             diskResolution: 6,
             radius: COLUMN_RADIUS_M,
@@ -232,12 +302,144 @@ export default function P0Page() {
         effects: [LIGHT],
       });
     },
-    [labelId],
+    [labelId, mapView],
+  );
+
+  /** Rete archi/nodi: PathLayer funziona sia su globo sia su mercator. */
+  const drawNetwork = useCallback(
+    (links: NetworkLink[], nodes: NetworkNode[]) => {
+      const overlay = overlayRef.current;
+      if (!overlay) {
+        return;
+      }
+
+      const paths = links.map((link) => linkToPath(link));
+      const viewKey = mapView === "globe" ? "globe" : "map";
+
+      overlay.setProps({
+        layers: [
+          new PathLayer<NetworkPath>({
+            id: `network-archi-${viewKey}`,
+            data: paths,
+            getPath: (d) => d.path,
+            getColor: (d) => {
+              const c = valueColor(d.weight);
+              return [c[0], c[1], c[2], 200];
+            },
+            widthUnits: "pixels",
+            getWidth: 3,
+            jointRounded: true,
+            capRounded: true,
+            ...under(labelId),
+          }),
+          new ScatterplotLayer<NetworkNode>({
+            id: `network-nodi-${viewKey}`,
+            data: nodes,
+            getPosition: (d) => d.position,
+            radiusUnits: "pixels",
+            getRadius: (d) => (d.role === "source" ? 7 : 4),
+            getFillColor: (d) =>
+              d.role === "source" ? [80, 235, 200, 240] : [255, 170, 90, 220],
+            ...under(labelId),
+          }),
+        ],
+        effects: [LIGHT],
+      });
+    },
+    [labelId, mapView],
   );
 
   const clearLayers = useCallback(() => {
     overlayRef.current?.setProps({ layers: [], effects: [LIGHT] });
   }, []);
+
+  const applyDataMode = useCallback(
+    async (mode: P0DataMode) => {
+      if (mode === "stores") {
+        if (stores) {
+          drawStores(1, stores);
+        }
+        return;
+      }
+
+      let data = network;
+      if (!data) {
+        try {
+          data = await loadRealNetwork();
+          setNetwork(data);
+        } catch (err: unknown) {
+          setLoadError(err instanceof Error ? err.message : "errore network");
+          return;
+        }
+      }
+      drawNetwork(data.links, data.nodes);
+    },
+    [stores, network, drawStores, drawNetwork],
+  );
+
+  const handleDataToggle = useCallback(() => {
+    const next: P0DataMode = dataMode === "stores" ? "network" : "stores";
+    setDataMode(next);
+    void applyDataMode(next);
+  }, [dataMode, applyDataMode]);
+
+  /** Globo inclinato ↔ mappa classica dall'alto (stesso centro/zoom). */
+  const handleMapViewToggle = useCallback(() => {
+    const m = map;
+    if (!m) {
+      return;
+    }
+    const next: P0MapView = mapView === "globe" ? "map" : "globe";
+    // svuota i layer prima del cambio: altrimenti restano clippati al disco
+    clearLayers();
+    m.setProjection({ type: next === "globe" ? "globe" : "mercator" });
+    setMapView(next);
+    if (next === "map") {
+      m.setPadding({ top: 0, right: 0, bottom: 0, left: 0 });
+      m.easeTo({ pitch: 0, duration: 600 });
+    } else {
+      m.setPadding({ top: 0, right: 0, bottom: VIEW_PAD_BOTTOM, left: 0 });
+      m.easeTo({ pitch: ARRIVAL_PITCH, duration: 600 });
+    }
+  }, [map, mapView, clearLayers]);
+
+  /** Riporta centro/zoom/pitch all'inquadratura USA di arrivo. */
+  const handleCenterUsa = useCallback(() => {
+    const m = map;
+    if (!m) {
+      return;
+    }
+    if (mapView === "globe") {
+      m.setPadding({ top: 0, right: 0, bottom: VIEW_PAD_BOTTOM, left: 0 });
+      m.easeTo({
+        center: TARGET,
+        zoom: ARRIVAL_ZOOM,
+        pitch: ARRIVAL_PITCH,
+        bearing: 0,
+        duration: 1200,
+      });
+    } else {
+      m.setPadding({ top: 0, right: 0, bottom: 0, left: 0 });
+      m.easeTo({
+        center: TARGET,
+        zoom: ARRIVAL_ZOOM,
+        pitch: 0,
+        bearing: 0,
+        duration: 1200,
+      });
+    }
+  }, [map, mapView]);
+
+  // dopo il cambio proiezione, ridefinisce i layer con id nuovo (sync deck ↔ maplibre)
+  useEffect(() => {
+    if (phase !== "navigabile") {
+      return;
+    }
+    const timer = window.setTimeout(() => {
+      void applyDataMode(dataMode);
+    }, 80);
+    return () => window.clearTimeout(timer);
+  }, [mapView, phase, dataMode, applyDataMode]);
 
   const animate = useCallback((ms: number, onFrame: (eased: number) => void) => {
     return new Promise<void>((resolve) => {
@@ -274,6 +476,8 @@ export default function P0Page() {
     const alive = () => id === runId.current;
 
     setBusy(true);
+    setDataMode("stores");
+    setMapView("globe");
     // ferma il loop di spin ma riparte dalla posizione corrente: niente salto, niente sipario
     stopSpin();
     clearLayers();
@@ -282,11 +486,11 @@ export default function P0Page() {
     const fromZoom = m.getZoom();
     const fromPitch = m.getPitch();
 
-    draw(0, data);
+    drawStores(0, data);
     setPhase("discesa");
 
     // un unico gesto: dalla longitudine in rotazione fino agli USA, zoom + pitch
-    await animate(7000, (t) => {
+    await animate(3500, (t) => {
       m.jumpTo({
         center: [lerpLng(from.lng, TARGET[0], t), from.lat + (TARGET[1] - from.lat) * t],
         zoom: fromZoom + (ARRIVAL_ZOOM - fromZoom) * t,
@@ -303,7 +507,7 @@ export default function P0Page() {
     m.setPadding({ top: 0, right: 0, bottom: VIEW_PAD_BOTTOM, left: 0 });
 
     setPhase("colonne");
-    await animate(2600, (t) => draw(t, data));
+    await animate(2600, (t) => drawStores(t, data));
     if (!alive()) {
       setBusy(false);
       return;
@@ -311,7 +515,7 @@ export default function P0Page() {
 
     setPhase("navigabile");
     setBusy(false);
-  }, [map, stores, busy, draw, animate, stopSpin, clearLayers]);
+  }, [map, stores, busy, drawStores, animate, stopSpin, clearLayers]);
 
   const returnToOrbit = useCallback(() => {
     const m = map;
@@ -320,6 +524,8 @@ export default function P0Page() {
     }
     runId.current += 1;
     setBusy(false);
+    setDataMode("stores");
+    setMapView("globe");
     stopSpin();
     clearLayers();
     m.setPadding({ top: 0, right: 0, bottom: 0, left: 0 });
@@ -354,14 +560,65 @@ export default function P0Page() {
   return (
     <main className="h-screen w-screen overflow-hidden bg-black">
       <Stage width={WIDTH} height={HEIGHT}>
-        <div className="relative" style={{ width: WIDTH, height: HEIGHT }}>
+        <div
+          className="relative"
+          style={{ width: WIDTH, height: HEIGHT, background: "#171A2D" }}
+        >
           <MapSurface
             width={WIDTH}
             height={HEIGHT}
             styleUrl={STYLE}
-            projection="globe"
+            projection={mapView === "globe" ? "globe" : "mercator"}
             onReady={handleReady}
           />
+          <AloneGlobo leggi={bordoGlobo} larghezza={WIDTH} altezza={HEIGHT} />
+          {/*
+            Titolo fisso al centro sul globo in orbita (stesso brand di T13).
+            Resta montato cosi' il fade-out CSS funziona allo zoom.
+          */}
+          <div
+            className="pointer-events-none absolute inset-0 z-20 flex flex-col items-center justify-center"
+            style={{
+              opacity: phase === "orbita" ? 1 : 0,
+              transition: "opacity 1200ms ease-out",
+            }}
+          >
+            <div
+              style={{
+                fontSize: 64,
+                letterSpacing: "0.2em",
+                color: "#6B7EF1",
+                textTransform: "uppercase",
+              }}
+            >
+              Procter &amp; Gamble
+            </div>
+            <div
+              style={{
+                fontSize: 156,
+                fontWeight: 600,
+                letterSpacing: "-0.04em",
+                color: "#6B7EF1",
+                marginTop: 8,
+              }}
+            >
+              Mapping Tool
+            </div>
+          </div>
+          {phase === "navigabile" ? (
+            <div
+              className="absolute top-1/2 z-30 -translate-x-1/2 -translate-y-1/2"
+              style={{ left: WIDTH / 5 }}
+            >
+              <P0NavMenu
+                dataMode={dataMode}
+                onDataToggle={handleDataToggle}
+                mapView={mapView}
+                onMapViewToggle={handleMapViewToggle}
+                onCenterUsa={handleCenterUsa}
+              />
+            </div>
+          ) : null}
         </div>
       </Stage>
 
@@ -392,9 +649,21 @@ export default function P0Page() {
           </HudPanel>
 
           <HudPanel title="dati">
-            <Row label="negozi" value={stores ? stores.length : "…"} />
-            <Row label="colore" value="comp_cvs" />
-            <Row label="altezza" value="comp_walgreens" />
+            {dataMode === "stores" ? (
+              <>
+                <Row label="vista" value="store" />
+                <Row label="negozi" value={stores ? stores.length : "…"} />
+                <Row label="colore" value="comp_cvs" />
+                <Row label="altezza" value="comp_walgreens" />
+              </>
+            ) : (
+              <>
+                <Row label="vista" value="network" />
+                <Row label="archi" value={network ? network.links.length : "…"} />
+                <Row label="nodi" value={network ? network.nodes.length : "…"} />
+                <Row label="peso" value="Dollars" />
+              </>
+            )}
           </HudPanel>
         </div>
 

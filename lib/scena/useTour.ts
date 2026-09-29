@@ -36,6 +36,7 @@ import type { MapHandle } from "@/components/lab/MapSurface";
 import { daMercatore, mercatore } from "@/lib/data/grid";
 import { valuta } from "@/lib/format";
 import { prefetchDescent, settle, under } from "@/lib/lab/map";
+import { bordoDelGlobo, type VistaDeck } from "@/lib/lab/bordoGlobo";
 import { costruisciGlobo, type ArcoGlobo, type NodoGlobo } from "./globo";
 import { BORDI_PAESE, LUCE, START_ZOOM, ZOOM_GLOBO, coloreValore } from "./sequenza";
 import type { CellaTour, DatiTour, NegozioTour } from "./tour";
@@ -154,70 +155,6 @@ const VUOTO: any[] = [];
  * prima delle colonne e sotto le etichette — quindi il confronto non serve.
  */
 const A_TERRA = { depthCompare: "always", depthWriteEnabled: false } as const;
-
-/**
- * Il raggio del globo nello spazio di lavoro della vista di deck.gl.
- *
- * E' una costante di deck.gl, non della Terra: la vista a globo disegna una
- * sfera di 256 unita' e tiene la camera nello stesso spazio. Verificato
- * proiettando il centro della mappa: la sua distanza dall'origine e' 256.
- */
-const RAGGIO_DECK = 256;
-
-type VistaDeck = {
-  cameraPosition: number[];
-  zoom: number;
-  unprojectPosition: (p: number[]) => number[];
-};
-
-/**
- * Il bordo del globo come lo vede la camera, in gradi.
- *
- * E' il cerchio dei punti in cui lo sguardo e' tangente alla sfera: attorno
- * al punto sotto la camera, a una distanza angolare che dipende solo da quanto
- * la camera e' lontana dal centro. Vale a qualunque inclinazione — che e'
- * esattamente dove un anello disegnato sullo schermo smetteva di funzionare:
- * a camera inclinata il globo non e' piu' un disco centrato, e l'alone
- * spariva proprio nella discesa e sul paese, dove il bordo si vede ancora.
- */
-function bordoDelGlobo(v: VistaDeck, punti = 160): [number, number][] | null {
-  const c = v.cameraPosition;
-  const d = Math.hypot(c[0], c[1], c[2]);
-  if (!(d > RAGGIO_DECK * 1.0005)) return null;
-  const u = c.map((x) => x / d);
-  const angolo = Math.acos(RAGGIO_DECK / d);
-  const coseno = Math.cos(angolo);
-  const seno = Math.sin(angolo);
-
-  // Due direzioni perpendicolari a quella della camera, e fra loro.
-  const aiuto = Math.abs(u[2]) < 0.9 ? [0, 0, 1] : [1, 0, 0];
-  const vettoriale = (a: number[], b: number[]) => [
-    a[1] * b[2] - a[2] * b[1],
-    a[2] * b[0] - a[0] * b[2],
-    a[0] * b[1] - a[1] * b[0],
-  ];
-  const grezzo = vettoriale(u, aiuto);
-  const n = Math.hypot(grezzo[0], grezzo[1], grezzo[2]);
-  const e1 = grezzo.map((x) => x / n);
-  const e2 = vettoriale(u, e1);
-
-  const fuori: [number, number][] = [];
-  for (let k = 0; k <= punti; k++) {
-    const f = (k / punti) * Math.PI * 2;
-    const p = [0, 1, 2].map(
-      (i) => RAGGIO_DECK * (coseno * u[i] + seno * (Math.cos(f) * e1[i] + Math.sin(f) * e2[i])),
-    );
-    const [lng, lat] = v.unprojectPosition(p);
-    // Longitudini continue: un salto da +180 a -180 in mezzo all'anello
-    // disegnerebbe una riga attraverso tutto il pianeta.
-    const prima = fuori[fuori.length - 1];
-    let continua = lng;
-    if (prima) while (continua - prima[0] > 180) continua -= 360;
-    if (prima) while (continua - prima[0] < -180) continua += 360;
-    fuori.push([continua, lat]);
-  }
-  return fuori;
-}
 
 const dolce = (x: number) => x * x * (3 - 2 * x);
 const limita = (x: number) => Math.max(0, Math.min(1, x));
