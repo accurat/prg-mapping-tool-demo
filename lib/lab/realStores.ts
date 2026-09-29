@@ -5,6 +5,10 @@ export type RealStore = {
   colorValue: number;
   /** 0..1 da comp_walgreens — altezza della colonna. */
   heightValue: number;
+  /** Vendite store in USD (store_sales_usd_amt). */
+  salesUsd: number;
+  stateName: string;
+  ownerName: string;
 };
 
 /** Spezza una riga CSV rispettando i campi tra virgolette. */
@@ -63,6 +67,9 @@ export function parseStoresCsv(text: string): RealStore[] {
   const iId = indexOf("store_id");
   const iColor = indexOf("comp_cvs");
   const iHeight = indexOf("comp_walgreens");
+  const iSales = indexOf("store_sales_usd_amt");
+  const iState = indexOf("state_name");
+  const iOwner = indexOf("owner_name");
 
   const rows = lines.slice(1).map((line) => {
     const cells = splitCsvLine(line);
@@ -72,6 +79,9 @@ export function parseStoresCsv(text: string): RealStore[] {
       storeId: cells[iId] ?? "",
       colorRaw: Number(cells[iColor]),
       heightRaw: Number(cells[iHeight]),
+      salesUsd: Number(cells[iSales]),
+      stateName: cells[iState] ?? "",
+      ownerName: cells[iOwner] ?? "",
     };
   });
 
@@ -91,6 +101,9 @@ export function parseStoresCsv(text: string): RealStore[] {
     storeId: row.storeId,
     colorValue: colors[i],
     heightValue: heights[i],
+    salesUsd: Number.isFinite(row.salesUsd) ? row.salesUsd : 0,
+    stateName: row.stateName,
+    ownerName: row.ownerName,
   }));
 }
 

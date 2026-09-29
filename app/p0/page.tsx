@@ -9,8 +9,9 @@ import {
   PathLayer,
   ScatterplotLayer,
 } from "deck.gl";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Hud, HudPanel, Row, fpsTone } from "@/components/lab/Hud";
+import { P0ContextPanel, type ContextStat } from "@/components/lab/P0ContextPanel";
 import {
   P0NavMenu,
   type P0DataMode,
@@ -25,6 +26,7 @@ import { loadRealNetwork, type NetworkLink, type NetworkNode } from "@/lib/lab/r
 import { loadRealStores, type RealStore } from "@/lib/lab/realStores";
 import { useFrameMeter } from "@/lib/lab/useFrameMeter";
 import { useRenderTrust } from "@/lib/lab/useRenderTrust";
+import { conta, valuta } from "@/lib/format";
 
 const WIDTH = 5760;
 const HEIGHT = 1080;
@@ -160,6 +162,34 @@ export default function P0Page() {
 
   const { stats } = useFrameMeter();
   const trust = useRenderTrust(stats.medianMs);
+
+  /** Aggregati della selezione corrente (oggi: overview USA intera). */
+  const contextStats = useMemo((): ContextStat[] => {
+    if (dataMode === "network") {
+      const links = network?.links ?? [];
+      const nodes = network?.nodes ?? [];
+      const dollars = links.reduce((sum, link) => sum + link.dollars, 0);
+      return [
+        { label: "Selection", value: "United States" },
+        { label: "Links", value: conta(links.length) },
+        { label: "Nodes", value: conta(nodes.length) },
+        { label: "Total dollars", value: valuta(dollars) },
+      ];
+    }
+
+    const list = stores ?? [];
+    const sales = list.reduce((sum, store) => sum + store.salesUsd, 0);
+    const states = new Set(list.map((store) => store.stateName).filter(Boolean));
+    return [
+      { label: "Selection", value: "United States" },
+      { label: "Stores", value: conta(list.length) },
+      { label: "Total sales", value: valuta(sales) },
+      { label: "States", value: conta(states.size) },
+    ];
+  }, [dataMode, stores, network]);
+
+  const viewTitle =
+    dataMode === "network" ? "Supply network" : "Store competitive density";
 
   useEffect(() => {
     let cancelled = false;
@@ -572,6 +602,11 @@ export default function P0Page() {
             onReady={handleReady}
           />
           <AloneGlobo leggi={bordoGlobo} larghezza={WIDTH} altezza={HEIGHT} />
+          <P0ContextPanel
+            title={viewTitle}
+            stats={contextStats}
+            visible={phase === "navigabile"}
+          />
           {/*
             Titolo fisso al centro sul globo in orbita (stesso brand di T13).
             Resta montato cosi' il fade-out CSS funziona allo zoom.
@@ -605,20 +640,23 @@ export default function P0Page() {
               Mapping Tool
             </div>
           </div>
-          {phase === "navigabile" ? (
-            <div
-              className="absolute top-1/2 z-30 -translate-x-1/2 -translate-y-1/2"
-              style={{ left: WIDTH / 5 }}
-            >
-              <P0NavMenu
-                dataMode={dataMode}
-                onDataToggle={handleDataToggle}
-                mapView={mapView}
-                onMapViewToggle={handleMapViewToggle}
-                onCenterUsa={handleCenterUsa}
-              />
-            </div>
-          ) : null}
+          <div
+            className="absolute top-1/2 z-30 -translate-x-1/2 -translate-y-1/2"
+            style={{
+              left: WIDTH / 5,
+              opacity: phase === "navigabile" ? 1 : 0,
+              pointerEvents: phase === "navigabile" ? "auto" : "none",
+              transition: "opacity 900ms cubic-bezier(0.4, 0, 0.2, 1)",
+            }}
+          >
+            <P0NavMenu
+              dataMode={dataMode}
+              onDataToggle={handleDataToggle}
+              mapView={mapView}
+              onMapViewToggle={handleMapViewToggle}
+              onCenterUsa={handleCenterUsa}
+            />
+          </div>
         </div>
       </Stage>
 
