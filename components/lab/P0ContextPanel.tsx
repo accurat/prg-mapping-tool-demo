@@ -5,6 +5,8 @@ import { COLORI } from "@/components/wall/tokens";
 export type ContextStat = {
   label: string;
   value: string;
+  /** Se true, la cella e' cliccabile (es. reset Selection). */
+  onClick?: () => void;
 };
 
 /**
@@ -75,43 +77,90 @@ export function P0ContextPanel({
           </span>
         </div>
 
-        {stats.map((stat) => (
-          <div
-            key={stat.label}
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              justifyContent: "center",
-              gap: 4,
-              paddingLeft: 32,
-              paddingRight: 32,
-              borderLeft: `1px solid ${COLORI.bordo}`,
-              minWidth: 180,
-            }}
-          >
-            <span
-              style={{
-                fontSize: 24,
-                letterSpacing: "0.1em",
-                textTransform: "uppercase",
-                color: COLORI.smorzato,
-              }}
-            >
-              {stat.label}
-            </span>
-            <span
-              style={{
-                fontSize: 48,
-                fontWeight: 600,
-                color: "#6B7EF1",
-                fontVariantNumeric: "tabular-nums",
-                lineHeight: 1.1,
-              }}
-            >
-              {stat.value}
-            </span>
-          </div>
-        ))}
+        {stats.map((stat) => {
+          const clickable = Boolean(stat.onClick);
+          const cellStyle = {
+            display: "flex",
+            flexDirection: "column" as const,
+            justifyContent: "center",
+            gap: 4,
+            paddingLeft: 32,
+            paddingRight: 32,
+            borderLeft: `1px solid ${COLORI.bordo}`,
+            minWidth: 180,
+            cursor: clickable ? "pointer" : "default",
+            pointerEvents: clickable ? ("auto" as const) : ("none" as const),
+          };
+
+          if (clickable) {
+            return (
+              <button
+                key={stat.label}
+                type="button"
+                onClick={stat.onClick}
+                aria-label={`Reset ${stat.label} to United States`}
+                style={{
+                  ...cellStyle,
+                  background: "transparent",
+                  borderTop: "none",
+                  borderRight: "none",
+                  borderBottom: "none",
+                  textAlign: "left",
+                  font: "inherit",
+                  color: "inherit",
+                }}
+              >
+                <span
+                  style={{
+                    fontSize: 24,
+                    letterSpacing: "0.1em",
+                    textTransform: "uppercase",
+                    color: COLORI.smorzato,
+                  }}
+                >
+                  {stat.label}
+                </span>
+                <span
+                  style={{
+                    fontSize: 48,
+                    fontWeight: 600,
+                    color: "#6B7EF1",
+                    fontVariantNumeric: "tabular-nums",
+                    lineHeight: 1.1,
+                  }}
+                >
+                  {stat.value}
+                </span>
+              </button>
+            );
+          }
+
+          return (
+            <div key={stat.label} style={cellStyle}>
+              <span
+                style={{
+                  fontSize: 24,
+                  letterSpacing: "0.1em",
+                  textTransform: "uppercase",
+                  color: COLORI.smorzato,
+                }}
+              >
+                {stat.label}
+              </span>
+              <span
+                style={{
+                  fontSize: 48,
+                  fontWeight: 600,
+                  color: "#6B7EF1",
+                  fontVariantNumeric: "tabular-nums",
+                  lineHeight: 1.1,
+                }}
+              >
+                {stat.value}
+              </span>
+            </div>
+          );
+        })}
       </div>
     </div>
   );

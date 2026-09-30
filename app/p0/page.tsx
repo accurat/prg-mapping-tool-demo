@@ -31,8 +31,20 @@ import {
   type DemoTable,
 } from "@/lib/lab/demographics";
 import { under } from "@/lib/lab/map";
+import {
+  boundsToCorners,
+  positionInBounds,
+  selectionLabelFromStates,
+  type GeoBounds,
+} from "@/lib/lab/geoSelection";
 import { loadRealNetwork, type NetworkLink, type NetworkNode } from "@/lib/lab/realNetwork";
 import { loadRealStores, type RealStore } from "@/lib/lab/realStores";
+import {
+  CIRCLE_UNION_FILL_PARAMETERS,
+  CIRCLE_UNION_RIM_PARAMETERS,
+  UnionFillScatterplotLayer,
+  strokePadMeters,
+} from "@/lib/lab/UnionScatterplotLayer";
 import { useFrameMeter } from "@/lib/lab/useFrameMeter";
 import { useRenderTrust } from "@/lib/lab/useRenderTrust";
 import { conta, valuta } from "@/lib/format";
@@ -61,8 +73,24 @@ const VIEW_PAD_BOTTOM = 520;
 
 /** Altezza massima delle colonne (metri) all'arrivo. */
 const DATA_HEIGHT_M = 90000;
-/** Raggio colonna in metri. */
+/** Raggio colonna in metri (vista globo / barre 3d). */
 const COLUMN_RADIUS_M = 12000;
+/**
+ * Cerchi in vista mappa: raggio min/max in metri (diametro 4–35 km).
+ * Mapping sqrt sulla metrica (ex altezza) per comprimere i grandi valori
+ * e ridure l'overlap rispetto al raggio fisso da 12 km delle colonne.
+ */
+const CIRCLE_RADIUS_MIN_M = 2000;
+const CIRCLE_RADIUS_MAX_M = 17500;
+/** Fill cerchi 2d a meta' opacita'; stroke pieno dello stesso colore. */
+const CIRCLE_FILL_ALPHA = 128;
+const CIRCLE_STROKE_ALPHA = 255;
+/** Spessore del bordo esterno della union, in pixel schermo. */
+const CIRCLE_STROKE_PX = 2;
+/** Durata inclinazione pitch globo ↔ mappa. */
+const VIEW_TILT_MS = 600;
+/** Durata morph barre ↔ cerchi dopo il tilt. */
+const FLAT_MORPH_MS = 750;
 
 /** Velocita' di rotazione sul proprio asse (gradi di longitudine al secondo). */
 const ORBIT_DEG_PER_S = 8;
@@ -108,6 +136,19 @@ function valueColor(t: number, alpha = 235): [number, number, number, number] {
     COLOR_LOW[2] + (COLOR_HIGH[2] - COLOR_LOW[2]) * u,
     alpha,
   ];
+}
+
+/** Raggio cerchio (metri) dalla metrica 0..1 ex altezza; sqrt per meno overlap. */
+function circleRadiusM(value01: number) {
+  const u = Math.max(0, Math.min(1, value01));
+  return (
+    CIRCLE_RADIUS_MIN_M +
+    Math.sqrt(u) * (CIRCLE_RADIUS_MAX_M - CIRCLE_RADIUS_MIN_M)
+  );
+}
+
+function easeInOutCubic(t: number) {
+  return t * t * (3 - 2 * t);
 }
 
 /** Interpola longitudine sul percorso piu' corto (gestisce l'antimeridiano). */
@@ -166,6 +207,10 @@ export default function P0Page() {
   const [demoColumnId, setDemoColumnId] = useState("age_millenials");
   const [loadError, setLoadError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [selection, setSelection] = useState<{
+    label: string;
+    bounds: GeoBounds;
+  } | null>(null);
 
   const overlayRef = useRef<MapLibreOverlay | null>(null);
   const runId = useRef(0);
@@ -173,6 +218,10 @@ export default function P0Page() {
   const spinRaf = useRef(0);
   /** Intensita' base dell'alone: acceso subito, senza fade-in. */
   const aloneRef = useRef(1);
+  /** 0 = barre 3d, 1 = cerchi piatti (metrica su diametro). */
+  const flatnessRef = useRef(0);
+  const viewGenRef = useRef(0);
+  const morphRafRef = useRef(0);
 
   const { stats } = useFrameMeter();
   const trust = useRenderTrust(stats.medianMs);
@@ -187,28 +236,45 @@ export default function P0Page() {
     [demoCategory, demoColumnId],
   );
 
-  const demoRecap = useMemo(() => {
-    if (!demoTable || !stores || !demoColumnId) return null;
-    return usaMetricSummary(
-      demoTable.byStore,
-      stores.map((s) => s.storeId),
-      demoColumnId,
-    );
-  }, [demoTable, stores, demoColumnId]);
-
   const exploringDemo = activeStory === "Explore demographics";
 
-  /** Aggregati della selezione corrente (oggi: overview USA intera). */
+  const selectedStores = useMemo(() => {
+    const list = stores ?? [];
+    if (!selection) {
+      return list;
+    }
+    return list.filter((store) =>
+      positionInBounds(store.position, selection.bounds),
+    );
+  }, [stores, selection]);
+
+  const selectionLabel = selection?.label ?? "United States";
+
+  const demoRecap = useMemo(() => {
+    if (!demoTable || !demoColumnId) return null;
+    return usaMetricSummary(
+      demoTable.byStore,
+      selectedStores.map((s) => s.storeId),
+      demoColumnId,
+    );
+  }, [demoTable, selectedStores, demoColumnId]);
+
+  /** Aggregati della selezione corrente (USA intera o box Shift+drag). */
   const contextStats = useMemo((): ContextStat[] => {
-    if (exploringDemo && demoRecap) {
-      const top = demoRecap.buckets.reduce(
+    if (exploringDemo && demoTable && demoColumnId) {
+      const recap = usaMetricSummary(
+        demoTable.byStore,
+        selectedStores.map((s) => s.storeId),
+        demoColumnId,
+      );
+      const top = recap.buckets.reduce(
         (best, b) => (b.share > best.share ? b : best),
-        demoRecap.buckets[0],
+        recap.buckets[0],
       );
       return [
-        { label: "Selection", value: "United States" },
+        { label: "Selection", value: selectionLabel },
         { label: "Metric", value: demoColumn?.label ?? "—" },
-        { label: "Avg index", value: demoRecap.avg.toFixed(0) },
+        { label: "Avg index", value: recap.avg.toFixed(0) },
         { label: "Top bucket", value: top?.name ?? "—" },
       ];
     }
@@ -216,30 +282,46 @@ export default function P0Page() {
     if (dataMode === "network") {
       const links = network?.links ?? [];
       const nodes = network?.nodes ?? [];
-      const dollars = links.reduce((sum, link) => sum + link.dollars, 0);
+      const inSel = selection
+        ? {
+            nodes: nodes.filter((n) =>
+              positionInBounds(n.position, selection.bounds),
+            ),
+            links: links.filter(
+              (link) =>
+                positionInBounds(link.source, selection.bounds) ||
+                positionInBounds(link.target, selection.bounds),
+            ),
+          }
+        : { nodes, links };
+      const dollars = inSel.links.reduce((sum, link) => sum + link.dollars, 0);
       return [
-        { label: "Selection", value: "United States" },
-        { label: "Links", value: conta(links.length) },
-        { label: "Nodes", value: conta(nodes.length) },
+        { label: "Selection", value: selectionLabel },
+        { label: "Links", value: conta(inSel.links.length) },
+        { label: "Nodes", value: conta(inSel.nodes.length) },
         { label: "Total dollars", value: valuta(dollars) },
       ];
     }
 
-    const list = stores ?? [];
-    const sales = list.reduce((sum, store) => sum + store.salesUsd, 0);
-    const states = new Set(list.map((store) => store.stateName).filter(Boolean));
+    const sales = selectedStores.reduce((sum, store) => sum + store.salesUsd, 0);
+    const states = new Set(
+      selectedStores.map((store) => store.stateName).filter(Boolean),
+    );
     return [
-      { label: "Selection", value: "United States" },
-      { label: "Stores", value: conta(list.length) },
+      { label: "Selection", value: selectionLabel },
+      { label: "Stores", value: conta(selectedStores.length) },
       { label: "Total sales", value: valuta(sales) },
       { label: "States", value: conta(states.size) },
     ];
   }, [
     exploringDemo,
-    demoRecap,
+    demoTable,
+    demoColumnId,
     demoColumn,
     dataMode,
-    stores,
+    selectedStores,
+    selectionLabel,
+    selection,
     network,
   ]);
 
@@ -290,8 +372,14 @@ export default function P0Page() {
     if (!map) {
       return;
     }
+    // overlaid: canvas deck dedicato con stencil proprio — serve all'union
+    // dei cerchi 2d (in interleaved lo stencil e' di MapLibre e si rompe).
     const overlay = new MapLibreOverlay({
-      interleaved: true,
+      interleaved: false,
+      useDevicePixels: false,
+      deviceProps: {
+        webgl: { stencil: true, alpha: true, antialias: false },
+      },
       layers: [],
       effects: [LIGHT],
     });
@@ -354,21 +442,33 @@ export default function P0Page() {
   useEffect(() => () => stopSpin(), [stopSpin]);
 
   const drawStores = useCallback(
-    (rise: number, data: RealStore[]) => {
+    (rise: number, data: RealStore[], flat = flatnessRef.current) => {
       const overlay = overlayRef.current;
       if (!overlay) {
         return;
       }
 
-      const ease = rise * rise * (3 - 2 * rise);
+      const ease = easeInOutCubic(rise);
       // id diverso per vista: deck.gl altrimenti tiene il clip circolare del globo
       const viewKey = mapView === "globe" ? "globe" : "map";
+      const colFade = (1 - flat) * ease;
+      const discFade = flat * ease;
+      const padM = map
+        ? strokePadMeters(map.getZoom(), map.getCenter().lat, CIRCLE_STROKE_PX)
+        : 800;
+      // first-wins: disegna prima i valori alti (piu' chiari) cosi' restano sopra
+      const discs = data.slice().sort((a, b) => b.colorValue - a.colorValue);
+      const discRadius = (d: RealStore) => {
+        const target = circleRadiusM(d.heightValue);
+        return COLUMN_RADIUS_M * (1 - flat) + target * flat;
+      };
 
       overlay.setProps({
         layers: [
           new ColumnLayer<RealStore>({
-            id: `negozi-${viewKey}`,
+            id: `negozi-col-${viewKey}`,
             data,
+            visible: flat < 0.999,
             // 12 lati: base circolare (6 = esagono)
             diskResolution: 12,
             radius: COLUMN_RADIUS_M,
@@ -376,27 +476,69 @@ export default function P0Page() {
             // senza materiale il colore del dato non viene oscurato dal lighting
             material: false,
             getPosition: (d) => d.position,
-            getElevation: (d) => d.heightValue * DATA_HEIGHT_M * ease,
+            getElevation: (d) => d.heightValue * DATA_HEIGHT_M * ease * (1 - flat),
             getFillColor: (d) => {
               const c = valueColor(d.colorValue);
-              return [c[0], c[1], c[2], c[3] * ease];
+              return [c[0], c[1], c[2], c[3] * colFade];
             },
             updateTriggers: {
-              getElevation: rise,
-              getFillColor: rise,
+              getElevation: [rise, flat],
+              getFillColor: [rise, flat],
             },
             ...under(labelId),
+          }),
+          // 1) union "grassa" colore stroke → 2) fill sostituisce l'interno
+          //    resta solo l'anello esterno della union (niente stroke interni)
+          new UnionFillScatterplotLayer<RealStore>({
+            id: `negozi-rim-${viewKey}`,
+            data: discs,
+            visible: flat > 0.001,
+            stroked: false,
+            filled: true,
+            parameters: CIRCLE_UNION_RIM_PARAMETERS,
+            getPosition: (d) => d.position,
+            radiusUnits: "meters",
+            getRadius: (d) => discRadius(d) + padM,
+            getFillColor: (d) => {
+              const c = valueColor(d.colorValue, CIRCLE_STROKE_ALPHA);
+              return [c[0], c[1], c[2], c[3] * discFade];
+            },
+            updateTriggers: {
+              getRadius: [flat, padM],
+              getFillColor: [rise, flat],
+            },
+          }),
+          new UnionFillScatterplotLayer<RealStore>({
+            id: `negozi-fill-${viewKey}`,
+            data: discs,
+            visible: flat > 0.001,
+            stroked: false,
+            filled: true,
+            parameters: CIRCLE_UNION_FILL_PARAMETERS,
+            getPosition: (d) => d.position,
+            radiusUnits: "meters",
+            getRadius: (d) => discRadius(d),
+            // premoltiplicato: blend one/zero su canvas premultiplied
+            getFillColor: (d) => {
+              const c = valueColor(d.colorValue, CIRCLE_FILL_ALPHA);
+              const a = (c[3] * discFade) / 255;
+              return [c[0] * a, c[1] * a, c[2] * a, c[3] * discFade];
+            },
+            updateTriggers: {
+              getRadius: flat,
+              getFillColor: [rise, flat],
+            },
           }),
         ],
         effects: [LIGHT],
       });
     },
-    [labelId, mapView],
+    [labelId, mapView, map],
   );
 
   /** Colonne = indice della metrica per store; colore = bucket Lowest→Highest. */
   const drawDemographics = useCallback(
-    (points: DemoIndexPoint[]) => {
+    (points: DemoIndexPoint[], flat = flatnessRef.current) => {
       const overlay = overlayRef.current;
       if (!overlay) {
         return;
@@ -404,30 +546,85 @@ export default function P0Page() {
       const viewKey = mapView === "globe" ? "globe" : "map";
       // altezza: indice 100 ≈ meta' DATA_HEIGHT; clamp a 200
       const INDEX_REF = 200;
+      const metric01 = (d: DemoIndexPoint) =>
+        Math.min(Math.max(d.index, 0), INDEX_REF) / INDEX_REF;
+      const colFade = 1 - flat;
+      const discFade = flat;
+      const padM = map
+        ? strokePadMeters(map.getZoom(), map.getCenter().lat, CIRCLE_STROKE_PX)
+        : 800;
+      const discRadius = (d: DemoIndexPoint) => {
+        const target = circleRadiusM(metric01(d));
+        return COLUMN_RADIUS_M * (1 - flat) + target * flat;
+      };
+
       overlay.setProps({
         layers: [
           new ColumnLayer<DemoIndexPoint>({
-            id: `demo-${viewKey}-${demoColumnId}`,
+            id: `demo-col-${viewKey}-${demoColumnId}`,
             data: points,
+            visible: flat < 0.999,
             diskResolution: 12,
             radius: COLUMN_RADIUS_M,
             extruded: true,
             material: false,
             getPosition: (d) => d.position,
-            getElevation: (d) =>
-              (Math.min(Math.max(d.index, 0), INDEX_REF) / INDEX_REF) * DATA_HEIGHT_M,
-            getFillColor: (d) => bucketColor(d.bucket),
+            getElevation: (d) => metric01(d) * DATA_HEIGHT_M * (1 - flat),
+            getFillColor: (d) => {
+              const c = bucketColor(d.bucket);
+              return [c[0], c[1], c[2], c[3] * colFade];
+            },
             updateTriggers: {
-              getElevation: demoColumnId,
-              getFillColor: demoColumnId,
+              getElevation: [demoColumnId, flat],
+              getFillColor: [demoColumnId, flat],
             },
             ...under(labelId),
+          }),
+          new UnionFillScatterplotLayer<DemoIndexPoint>({
+            id: `demo-rim-${viewKey}-${demoColumnId}`,
+            data: points,
+            visible: flat > 0.001,
+            stroked: false,
+            filled: true,
+            parameters: CIRCLE_UNION_RIM_PARAMETERS,
+            getPosition: (d) => d.position,
+            radiusUnits: "meters",
+            getRadius: (d) => discRadius(d) + padM,
+            getFillColor: (d) => {
+              const c = bucketColor(d.bucket);
+              return [c[0], c[1], c[2], CIRCLE_STROKE_ALPHA * discFade];
+            },
+            updateTriggers: {
+              getRadius: [demoColumnId, flat, padM],
+              getFillColor: [demoColumnId, flat],
+            },
+          }),
+          new UnionFillScatterplotLayer<DemoIndexPoint>({
+            id: `demo-fill-${viewKey}-${demoColumnId}`,
+            data: points,
+            visible: flat > 0.001,
+            stroked: false,
+            filled: true,
+            parameters: CIRCLE_UNION_FILL_PARAMETERS,
+            getPosition: (d) => d.position,
+            radiusUnits: "meters",
+            getRadius: (d) => discRadius(d),
+            getFillColor: (d) => {
+              const c = bucketColor(d.bucket);
+              const alpha = CIRCLE_FILL_ALPHA * discFade;
+              const a = alpha / 255;
+              return [c[0] * a, c[1] * a, c[2] * a, alpha];
+            },
+            updateTriggers: {
+              getRadius: [demoColumnId, flat],
+              getFillColor: [demoColumnId, flat],
+            },
           }),
         ],
         effects: [LIGHT],
       });
     },
-    [labelId, mapView, demoColumnId],
+    [labelId, mapView, demoColumnId, map],
   );
 
   /** Rete archi/nodi: PathLayer funziona sia su globo sia su mercator. */
@@ -478,18 +675,87 @@ export default function P0Page() {
     overlayRef.current?.setProps({ layers: [], effects: [LIGHT] });
   }, []);
 
+  const cancelFlatMorph = useCallback(() => {
+    if (morphRafRef.current) {
+      cancelAnimationFrame(morphRafRef.current);
+      morphRafRef.current = 0;
+    }
+  }, []);
+
+  /** Ridisegna store/demo alla flatness data (network ignorato). */
+  const paintFlatColumns = useCallback(
+    (flat: number) => {
+      if (activeStory === "Explore demographics" && demoTable && demoColumnId) {
+        const points = buildDemoPoints(
+          selectedStores,
+          demoTable.byStore,
+          demoColumnId,
+        );
+        drawDemographics(points, flat);
+        return;
+      }
+      if (dataMode === "stores") {
+        drawStores(1, selectedStores, flat);
+      }
+    },
+    [
+      activeStory,
+      selectedStores,
+      demoTable,
+      demoColumnId,
+      dataMode,
+      drawDemographics,
+      drawStores,
+    ],
+  );
+
+  const usesColumnLayers = useCallback(() => {
+    if (activeStory === "Explore demographics") {
+      return true;
+    }
+    return dataMode === "stores";
+  }, [activeStory, dataMode]);
+
+  const morphFlatness = useCallback(
+    (from: number, to: number) => {
+      cancelFlatMorph();
+      const gen = viewGenRef.current;
+      const start = performance.now();
+      const step = (now: number) => {
+        if (gen !== viewGenRef.current) {
+          return;
+        }
+        const t = Math.min(1, (now - start) / FLAT_MORPH_MS);
+        const flat = from + (to - from) * easeInOutCubic(t);
+        flatnessRef.current = flat;
+        paintFlatColumns(flat);
+        if (t < 1) {
+          morphRafRef.current = requestAnimationFrame(step);
+          return;
+        }
+        morphRafRef.current = 0;
+        flatnessRef.current = to;
+        paintFlatColumns(to);
+      };
+      morphRafRef.current = requestAnimationFrame(step);
+    },
+    [cancelFlatMorph, paintFlatColumns],
+  );
+
   const applyDataMode = useCallback(
     async (mode: P0DataMode) => {
-      if (activeStory === "Explore demographics" && stores && demoTable && demoColumnId) {
-        const points = buildDemoPoints(stores, demoTable.byStore, demoColumnId);
-        drawDemographics(points);
+      if (activeStory === "Explore demographics" && demoTable && demoColumnId) {
+        const points = buildDemoPoints(
+          selectedStores,
+          demoTable.byStore,
+          demoColumnId,
+        );
+        drawDemographics(points, flatnessRef.current);
         return;
       }
 
       if (mode === "stores") {
-        if (stores) {
-          drawStores(1, stores);
-        }
+        drawStores(1, selectedStores, flatnessRef.current);
         return;
       }
 
@@ -503,11 +769,24 @@ export default function P0Page() {
           return;
         }
       }
+      if (selection) {
+        const nodes = data.nodes.filter((n) =>
+          positionInBounds(n.position, selection.bounds),
+        );
+        const links = data.links.filter(
+          (link) =>
+            positionInBounds(link.source, selection.bounds) ||
+            positionInBounds(link.target, selection.bounds),
+        );
+        drawNetwork(links, nodes);
+        return;
+      }
       drawNetwork(data.links, data.nodes);
     },
     [
       activeStory,
-      stores,
+      selectedStores,
+      selection,
       demoTable,
       demoColumnId,
       drawDemographics,
@@ -522,36 +801,14 @@ export default function P0Page() {
     setActiveStory(null);
     const next: P0DataMode = dataMode === "stores" ? "network" : "stores";
     setDataMode(next);
-    if (next === "stores") {
-      if (stores) drawStores(1, stores);
-      return;
-    }
-    void (async () => {
-      let data = network;
-      if (!data) {
-        try {
-          data = await loadRealNetwork();
-          setNetwork(data);
-        } catch (err: unknown) {
-          setLoadError(err instanceof Error ? err.message : "errore network");
-          return;
-        }
-      }
-      drawNetwork(data.links, data.nodes);
-    })();
-  }, [dataMode, stores, network, drawStores, drawNetwork]);
+    void applyDataMode(next);
+  }, [dataMode, applyDataMode]);
 
   const handleStorySelect = useCallback(
     async (story: P0StoryView) => {
       setActiveStory(story);
       if (story !== "Explore demographics") {
-        if (dataMode === "stores") {
-          if (stores) drawStores(1, stores);
-        } else if (network) {
-          drawNetwork(network.links, network.nodes);
-        } else {
-          void applyDataMode("network");
-        }
+        void applyDataMode(dataMode);
         return;
       }
 
@@ -575,21 +832,18 @@ export default function P0Page() {
         cat.columns.find((c) => c.id === demoColumnId) ?? cat.columns[0];
       if (col) setDemoColumnId(col.id);
 
-      if (!stores) return;
-      const colId = col?.id ?? cat.columns[0].id;
-      const points = buildDemoPoints(stores, table.byStore, colId);
-      drawDemographics(points);
+      const colId = col?.id ?? cat.columns[0]?.id;
+      if (!colId) return;
+      const points = buildDemoPoints(selectedStores, table.byStore, colId);
+      drawDemographics(points, flatnessRef.current);
     },
     [
       dataMode,
       demoTable,
       demoCategoryId,
       demoColumnId,
-      stores,
-      network,
+      selectedStores,
       drawDemographics,
-      drawStores,
-      drawNetwork,
       applyDataMode,
     ],
   );
@@ -606,54 +860,160 @@ export default function P0Page() {
     [demoTable],
   );
 
-  /** Globo inclinato ↔ mappa classica dall'alto (stesso centro/zoom). */
+  /** Inquadra i bounds della selezione (o USA intera se non c'e'). */
+  const frameCamera = useCallback(
+    (bounds: GeoBounds | null) => {
+      const m = map;
+      if (!m) {
+        return;
+      }
+      const pitch = mapView === "globe" ? ARRIVAL_PITCH : 0;
+
+      if (!bounds) {
+        // overview USA: padding basso sul globo per il vanishing point
+        if (mapView === "globe") {
+          m.setPadding({ top: 0, right: 0, bottom: VIEW_PAD_BOTTOM, left: 0 });
+        } else {
+          m.setPadding({ top: 0, right: 0, bottom: 0, left: 0 });
+        }
+        m.easeTo({
+          center: TARGET,
+          zoom: ARRIVAL_ZOOM,
+          pitch,
+          bearing: 0,
+          duration: 1200,
+        });
+        return;
+      }
+
+      // selezione: padding simmetrico (il VIEW_PAD_BOTTOM spostava tutto in alto)
+      m.setPadding({ top: 0, right: 0, bottom: 0, left: 0 });
+      m.fitBounds(boundsToCorners(bounds), {
+        padding: { top: 140, bottom: 140, left: 80, right: 80 },
+        pitch,
+        bearing: 0,
+        duration: 1200,
+        maxZoom: 12,
+      });
+    },
+    [map, mapView],
+  );
+
+  const handleBoxSelect = useCallback(
+    (bounds: GeoBounds) => {
+      if (phase !== "navigabile") {
+        return;
+      }
+      const hit = (stores ?? []).filter((store) =>
+        positionInBounds(store.position, bounds),
+      );
+      setSelection({
+        bounds,
+        label: selectionLabelFromStates(hit.map((s) => s.stateName)),
+      });
+      frameCamera(bounds);
+
+      const flat = flatnessRef.current;
+      if (activeStory === "Explore demographics" && demoTable && demoColumnId) {
+        drawDemographics(
+          buildDemoPoints(hit, demoTable.byStore, demoColumnId),
+          flat,
+        );
+        return;
+      }
+      if (dataMode === "stores") {
+        drawStores(1, hit, flat);
+        return;
+      }
+      if (network) {
+        const nodes = network.nodes.filter((n) =>
+          positionInBounds(n.position, bounds),
+        );
+        const links = network.links.filter(
+          (link) =>
+            positionInBounds(link.source, bounds) ||
+            positionInBounds(link.target, bounds),
+        );
+        drawNetwork(links, nodes);
+      }
+    },
+    [
+      phase,
+      stores,
+      frameCamera,
+      activeStory,
+      demoTable,
+      demoColumnId,
+      dataMode,
+      network,
+      drawDemographics,
+      drawStores,
+      drawNetwork,
+    ],
+  );
+
   const handleMapViewToggle = useCallback(() => {
     const m = map;
     if (!m) {
       return;
     }
     const next: P0MapView = mapView === "globe" ? "map" : "globe";
+    // mappa: parti dalle barre e morpha ai cerchi a fine tilt; globo: inverso
+    const fromFlat = next === "map" ? 0 : 1;
+    const toFlat = next === "map" ? 1 : 0;
+    const gen = ++viewGenRef.current;
+    cancelFlatMorph();
+    flatnessRef.current = fromFlat;
     // svuota i layer prima del cambio: altrimenti restano clippati al disco
     clearLayers();
     m.setProjection({ type: next === "globe" ? "globe" : "mercator" });
     setMapView(next);
     if (next === "map") {
       m.setPadding({ top: 0, right: 0, bottom: 0, left: 0 });
-      m.easeTo({ pitch: 0, duration: 600 });
+      m.easeTo({ pitch: 0, duration: VIEW_TILT_MS });
     } else {
       m.setPadding({ top: 0, right: 0, bottom: VIEW_PAD_BOTTOM, left: 0 });
-      m.easeTo({ pitch: ARRIVAL_PITCH, duration: 600 });
+      m.easeTo({ pitch: ARRIVAL_PITCH, duration: VIEW_TILT_MS });
     }
-  }, [map, mapView, clearLayers]);
 
-  /** Riporta centro/zoom/pitch all'inquadratura USA di arrivo. */
-  const handleCenterUsa = useCallback(() => {
-    const m = map;
-    if (!m) {
+    if (!usesColumnLayers()) {
+      flatnessRef.current = toFlat;
       return;
     }
-    if (mapView === "globe") {
-      m.setPadding({ top: 0, right: 0, bottom: VIEW_PAD_BOTTOM, left: 0 });
-      m.easeTo({
-        center: TARGET,
-        zoom: ARRIVAL_ZOOM,
-        pitch: ARRIVAL_PITCH,
-        bearing: 0,
-        duration: 1200,
-      });
-    } else {
-      m.setPadding({ top: 0, right: 0, bottom: 0, left: 0 });
-      m.easeTo({
-        center: TARGET,
-        zoom: ARRIVAL_ZOOM,
-        pitch: 0,
-        bearing: 0,
-        duration: 1200,
-      });
-    }
-  }, [map, mapView]);
 
-  // dopo il cambio proiezione / metrica demo, ridefinisce i layer
+    window.setTimeout(() => {
+      if (gen !== viewGenRef.current) {
+        return;
+      }
+      morphFlatness(fromFlat, toFlat);
+    }, VIEW_TILT_MS);
+  }, [map, mapView, clearLayers, cancelFlatMorph, usesColumnLayers, morphFlatness]);
+
+  /** Frame: inquadra la selezione corrente, altrimenti overview USA. */
+  const handleCenterUsa = useCallback(() => {
+    frameCamera(selection?.bounds ?? null);
+  }, [frameCamera, selection]);
+
+  /** Click su Selection nell'header: torna a United States. */
+  const handleClearSelection = useCallback(() => {
+    if (!selection) {
+      return;
+    }
+    setSelection(null);
+    frameCamera(null);
+  }, [selection, frameCamera]);
+
+  const headerStats = useMemo(
+    () =>
+      contextStats.map((stat) =>
+        stat.label === "Selection" && selection
+          ? { ...stat, onClick: handleClearSelection }
+          : stat,
+      ),
+    [contextStats, selection, handleClearSelection],
+  );
+
+  // dopo il cambio proiezione / metrica demo / selezione, ridefinisce i layer
   useEffect(() => {
     if (phase !== "navigabile") {
       return;
@@ -662,7 +1022,16 @@ export default function P0Page() {
       void applyDataMode(dataMode);
     }, 80);
     return () => window.clearTimeout(timer);
-  }, [mapView, phase, dataMode, applyDataMode, demoColumnId, demoCategoryId, activeStory]);
+  }, [
+    mapView,
+    phase,
+    dataMode,
+    applyDataMode,
+    demoColumnId,
+    demoCategoryId,
+    activeStory,
+    selection,
+  ]);
 
   useEffect(() => {
     if (phase === "orbita") {
@@ -709,6 +1078,10 @@ export default function P0Page() {
     setDataMode("stores");
     setMapView("globe");
     setViewsOpen(false);
+    setSelection(null);
+    viewGenRef.current += 1;
+    cancelFlatMorph();
+    flatnessRef.current = 0;
     // ferma il loop di spin ma riparte dalla posizione corrente: niente salto, niente sipario
     stopSpin();
     clearLayers();
@@ -746,7 +1119,7 @@ export default function P0Page() {
 
     setPhase("navigabile");
     setBusy(false);
-  }, [map, stores, busy, drawStores, animate, stopSpin, clearLayers]);
+  }, [map, stores, busy, drawStores, animate, stopSpin, clearLayers, cancelFlatMorph]);
 
   const returnToOrbit = useCallback(() => {
     const m = map;
@@ -754,10 +1127,14 @@ export default function P0Page() {
       return;
     }
     runId.current += 1;
+    viewGenRef.current += 1;
+    cancelFlatMorph();
+    flatnessRef.current = 0;
     setBusy(false);
     setDataMode("stores");
     setMapView("globe");
     setViewsOpen(false);
+    setSelection(null);
     stopSpin();
     clearLayers();
     m.setPadding({ top: 0, right: 0, bottom: 0, left: 0 });
@@ -769,7 +1146,7 @@ export default function P0Page() {
     });
     setPhase("orbita");
     startSpin(m);
-  }, [map, stopSpin, clearLayers, startSpin]);
+  }, [map, stopSpin, clearLayers, startSpin, cancelFlatMorph]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -801,12 +1178,13 @@ export default function P0Page() {
             height={HEIGHT}
             styleUrl={STYLE}
             projection={mapView === "globe" ? "globe" : "mercator"}
+            onBoxSelect={handleBoxSelect}
             onReady={handleReady}
           />
           <AloneGlobo leggi={bordoGlobo} larghezza={WIDTH} altezza={HEIGHT} />
           <P0ContextPanel
             title={viewTitle}
-            stats={contextStats}
+            stats={headerStats}
             visible={phase === "navigabile"}
           />
           {/*

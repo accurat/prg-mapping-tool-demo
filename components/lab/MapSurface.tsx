@@ -3,6 +3,8 @@
 import { MapLibreMap, setWorkerUrl } from "maplibre-gl";
 import { useEffect, useRef } from "react";
 import "maplibre-gl/dist/maplibre-gl.css";
+import type { GeoBounds } from "@/lib/lab/geoSelection";
+import { boundsFromScreenBox } from "@/lib/lab/geoSelection";
 
 export type MapHandle = MapLibreMap;
 
@@ -24,6 +26,7 @@ export function MapSurface({
   projection,
   maxTileCacheZoomLevels = 24,
   preserveDrawingBuffer = false,
+  onBoxSelect,
   onReady,
 }: {
   width: number;
@@ -43,10 +46,17 @@ export function MapSurface({
    * Costa, quindi si attiva solo nelle pagine di diagnosi.
    */
   preserveDrawingBuffer?: boolean;
+  /**
+   * Se presente, Shift+drag seleziona l'area (niente zoom automatico).
+   * Il callback riceve i bounds geografici del box.
+   */
+  onBoxSelect?: (bounds: GeoBounds) => void;
   onReady?: (map: MapHandle) => void;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
+  const onBoxSelectRef = useRef(onBoxSelect);
+  onBoxSelectRef.current = onBoxSelect;
 
   useEffect(() => {
     const container = containerRef.current;
@@ -64,8 +74,31 @@ export function MapSurface({
       maxCanvasSize: [8192, 8192],
       maxTileCacheZoomLevels,
       attributionControl: false,
+      // Shift+drag: selezione se c'e' onBoxSelect, altrimenti fitBounds di default
+      boxZoom: {
+        boxZoomEnd: (m, startPos, endPos) => {
+          const bounds = boundsFromScreenBox(
+            (p) => m.unproject([p.x, p.y]),
+            startPos,
+            endPos,
+          );
+          if (onBoxSelectRef.current) {
+            onBoxSelectRef.current(bounds);
+            return;
+          }
+          m.fitBounds(
+            [
+              [bounds.west, bounds.south],
+              [bounds.east, bounds.north],
+            ],
+            {padding: 20},
+          );
+        },
+      },
       canvasContextAttributes: {
         antialias: false,
+        // serve allo stencil union dei cerchi 2d in P0 (e ad altri layer deck)
+        stencil: true,
         powerPreference: "high-performance",
         preserveDrawingBuffer,
       },
@@ -74,7 +107,7 @@ export function MapSurface({
 
     map.on("load", () => {
       map.setProjection({ type: projection });
-      // In sviluppo la mappa e' raggiungibile dalla console.
+      // In sviluppo la mappa e' raggiungibile dalla Console.
       //
       // Serve a rispondere a domande come «a che zoom siamo adesso» senza
       // ricostruirle da una formula: un'approssimazione della matematica di
@@ -92,6 +125,7 @@ export function MapSurface({
     };
     // La mappa viene ricreata solo al cambio di stile o dimensione: la
     // proiezione si aggiorna nell'effetto sotto, senza ricostruire tutto.
+    // onBoxSelect e' letto via ref: non ricostruisce la mappa a ogni render.
   }, [styleUrl, width, height, maxTileCacheZoomLevels, preserveDrawingBuffer]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
