@@ -11,39 +11,51 @@ interface P0NavMenuProps {
   mapView: P0MapView;
   onMapViewToggle: () => void;
   onCenterUsa: () => void;
+  viewsOpen: boolean;
+  onViewsOpenChange: (open: boolean) => void;
 }
 
 type NavItem = {
+  id: string;
   label: string;
   value: string;
   onClick: () => void;
 };
 
-/**
- * Controlli navigabili: stesso chrome tipografico del pannello contesto in alto.
- */
+/** Menu laterale navigabile (solo controlli). */
 export function P0NavMenu({
   dataMode,
   onDataToggle,
   mapView,
   onMapViewToggle,
   onCenterUsa,
+  viewsOpen,
+  onViewsOpenChange,
 }: P0NavMenuProps) {
   const items: NavItem[] = [
     {
+      id: "data",
       label: "Data",
       value: dataMode === "stores" ? "Store" : "Network",
       onClick: onDataToggle,
     },
     {
-      label: "View",
+      id: "mode",
+      label: "Mode",
       value: mapView === "globe" ? "Globe" : "Map",
       onClick: onMapViewToggle,
     },
     {
+      id: "frame",
       label: "Frame",
       value: "Center",
       onClick: onCenterUsa,
+    },
+    {
+      id: "view",
+      label: "View",
+      value: viewsOpen ? "Close" : "Add",
+      onClick: () => onViewsOpenChange(!viewsOpen),
     },
   ];
 
@@ -62,7 +74,7 @@ export function P0NavMenu({
     >
       {items.map((item, i) => (
         <button
-          key={item.label}
+          key={item.id}
           type="button"
           onClick={item.onClick}
           style={{

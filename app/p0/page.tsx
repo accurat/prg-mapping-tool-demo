@@ -17,6 +17,7 @@ import {
   type P0DataMode,
   type P0MapView,
 } from "@/components/lab/P0NavMenu";
+import { P0ViewsPanel } from "@/components/lab/P0ViewsPanel";
 import { MapSurface, type MapHandle } from "@/components/lab/MapSurface";
 import { Stage } from "@/components/lab/Stage";
 import { AloneGlobo } from "@/components/tour/AloneGlobo";
@@ -150,6 +151,7 @@ export default function P0Page() {
   } | null>(null);
   const [dataMode, setDataMode] = useState<P0DataMode>("stores");
   const [mapView, setMapView] = useState<P0MapView>("globe");
+  const [viewsOpen, setViewsOpen] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -311,7 +313,8 @@ export default function P0Page() {
           new ColumnLayer<RealStore>({
             id: `negozi-${viewKey}`,
             data,
-            diskResolution: 6,
+            // 12 lati: base circolare (6 = esagono)
+            diskResolution: 12,
             radius: COLUMN_RADIUS_M,
             extruded: true,
             // senza materiale il colore del dato non viene oscurato dal lighting
@@ -508,6 +511,7 @@ export default function P0Page() {
     setBusy(true);
     setDataMode("stores");
     setMapView("globe");
+    setViewsOpen(false);
     // ferma il loop di spin ma riparte dalla posizione corrente: niente salto, niente sipario
     stopSpin();
     clearLayers();
@@ -556,6 +560,7 @@ export default function P0Page() {
     setBusy(false);
     setDataMode("stores");
     setMapView("globe");
+    setViewsOpen(false);
     stopSpin();
     clearLayers();
     m.setPadding({ top: 0, right: 0, bottom: 0, left: 0 });
@@ -641,12 +646,16 @@ export default function P0Page() {
             </div>
           </div>
           <div
-            className="absolute top-1/2 z-30 -translate-x-1/2 -translate-y-1/2"
+            className="absolute top-1/2 z-30"
             style={{
-              left: WIDTH / 5,
+              left: viewsOpen ? 64 : WIDTH / 5,
+              transform: viewsOpen
+                ? "translate(0, -50%)"
+                : "translate(-50%, -50%)",
               opacity: phase === "navigabile" ? 1 : 0,
               pointerEvents: phase === "navigabile" ? "auto" : "none",
-              transition: "opacity 900ms cubic-bezier(0.4, 0, 0.2, 1)",
+              transition:
+                "left 500ms cubic-bezier(0.4, 0, 0.2, 1), transform 500ms cubic-bezier(0.4, 0, 0.2, 1), opacity 900ms cubic-bezier(0.4, 0, 0.2, 1)",
             }}
           >
             <P0NavMenu
@@ -655,7 +664,22 @@ export default function P0Page() {
               mapView={mapView}
               onMapViewToggle={handleMapViewToggle}
               onCenterUsa={handleCenterUsa}
+              viewsOpen={viewsOpen}
+              onViewsOpenChange={setViewsOpen}
             />
+          </div>
+          <div
+            className="absolute top-1/2 z-30 -translate-y-1/2"
+            style={{
+              // più a destra del nav aperto, gap ampio tra i due elementi
+              left: 560,
+              opacity: phase === "navigabile" && viewsOpen ? 1 : 0,
+              pointerEvents:
+                phase === "navigabile" && viewsOpen ? "auto" : "none",
+              transition: "opacity 450ms cubic-bezier(0.4, 0, 0.2, 1)",
+            }}
+          >
+            <P0ViewsPanel visible={viewsOpen && phase === "navigabile"} />
           </div>
         </div>
       </Stage>
