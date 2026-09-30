@@ -1,0 +1,141 @@
+column	type	label	category	group	format	keyMetric	flagged	aggregation	locale	aggregation_method
+store_id	categorical									array
+lat	numerical	Latitude		Coordinates						
+long	numerical	Longitude		Coordinates						
+star_rating	categorical	Star Rating		Performance						round_avg
+age_0_4	numerical	0 - 4 Years	Generation	Demographics	,.0f					avg
+age_gen_alpha	numerical	Alpha	Generation	Demographics	,.0f					avg
+age_gen_z	numerical	Gen Z	Generation	Demographics	,.0f					avg
+age_millenials	numerical	Millenials	Generation	Demographics	,.0f					avg
+age_gen_x	numerical	Gen X	Generation	Demographics	,.0f					avg
+age_boomers	numerical	Boomers	Generation	Demographics	,.0f					avg
+age_70_plus	numerical	70 Years +	Generation	Demographics	,.0f					avg
+comp_ttl_store	numerical	Total Competitive Density	Retail Density	Retail Density	,.0f					avg
+comp_albertsons	numerical	Albertsons	Retail Density	Retail Density	,.0f					avg
+comp_costco	numerical	Costco	Retail Density	Retail Density	,.0f					avg
+comp_cvs	numerical	CVS	Retail Density	Retail Density	,.0f					avg
+comp_dollar_general	numerical	Dollar General	Retail Density	Retail Density	,.0f					avg
+comp_family_dollar	numerical	Family Dollar	Retail Density	Retail Density	,.0f					avg
+comp_kroger	numerical	Kroger	Retail Density	Retail Density	,.0f					avg
+comp_meijer	numerical	Meijer	Retail Density	Retail Density	,.0f					avg
+comp_publix	numerical	Publix	Retail Density	Retail Density	,.0f					avg
+comp_safeway	numerical	Safeway	Retail Density	Retail Density	,.0f					avg
+comp_sams	numerical	Sam's	Retail Density	Retail Density	,.0f					avg
+comp_target	numerical	Target	Retail Density	Retail Density	,.0f					avg
+comp_walgreens	numerical	Walgreens	Retail Density	Retail Density	,.0f					avg
+comp_walmart	numerical	Walmart	Retail Density	Retail Density	,.0f					avg
+edu_less_hs	numerical	Less Than HS	Education	Demographics	,.0f					avg
+edu_hs_dip	numerical	HS Diploma	Education	Demographics	,.0f					avg
+edu_some_col_no_deg	numerical	Some College	Education	Demographics	,.0f					avg
+edu_assoc_deg	numerical	Associates	Education	Demographics	,.0f					avg
+edu_bach_deg	numerical	Bachelors	Education	Demographics	,.0f					avg
+edu_grad_deg	numerical	Graduate	Education	Demographics	,.0f					avg
+ethn_2pl	numerical	Multiracial	Ethnicity	Demographics	,.0f					avg
+ethn_aa	numerical	Black	Ethnicity	Demographics	,.0f					avg
+ethn_asian	numerical	Asian	Ethnicity	Demographics	,.0f					avg
+ethn_hisp	numerical	Hispanic	Ethnicity	Demographics	,.0f					avg
+ethn_native	numerical	Native	Ethnicity	Demographics	,.0f					avg
+ethn_other	numerical	Other	Ethnicity	Demographics	,.0f					avg
+ethn_pi	numerical	Pacific Islander	Ethnicity	Demographics	,.0f					avg
+ethn_white	numerical	White	Ethnicity	Demographics	,.0f					avg
+hhd_vph_none	numerical	No Cars	Vehicle Ownership	Demographics	,.0f					avg
+hhd_vph_1	numerical	One Car	Vehicle Ownership	Demographics	,.0f					avg
+hhd_vph_more1	numerical	Multiple Cars	Vehicle Ownership	Demographics	,.0f					avg
+hoh_f	numerical	HoH Female	Head of Household	Demographics	,.0f					avg
+hoh_m	numerical	HoH Male	Head of Household	Demographics	,.0f					avg
+hu_renting	numerical	Rentals	Housing	Demographics	,.0f					avg
+hu_vacnt	numerical	Vacant Housing	Housing	Demographics	,.0f					avg
+inc_less15	numerical	Less Than $15k	Income	Demographics	,.0f					avg
+inc_15_35	numerical	$15k - $35k	Income	Demographics	,.0f					avg
+inc_35_50	numerical	$35k - $50k	Income	Demographics	,.0f					avg
+inc_50_100	numerical	$50k - $100k	Income	Demographics	,.0f					avg
+inc_100_150	numerical	$100k - $150k	Income	Demographics	,.0f					avg
+inc_150_200	numerical	$150k - $200k	Income	Demographics	,.0f					avg
+inc_200pl	numerical	$200k and Above	Income	Demographics	,.0f					avg
+ms_never_marr	numerical	Never Married	Marital Status	Demographics	,.0f					avg
+ms_married	numerical	Married	Marital Status	Demographics	,.0f					avg
+ms_separated	numerical	Separated	Marital Status	Demographics	,.0f					avg
+ms_divorced	numerical	Divorced	Marital Status	Demographics	,.0f					avg
+ms_widowed	numerical	Widowed	Marital Status	Demographics	,.0f					avg
+occ_emp	numerical	Employed	Employment	Demographics	,.0f					avg
+occ_unemp	numerical	Unemployed	Employment	Demographics	,.0f					avg
+pop_cnt_f	numerical			Demographics	,.0f					avg
+pop_cnt_m	numerical			Demographics	,.0f					avg
+store_sales_usd_amt	numerical			Performance	,.0f					sum
+store_sales_unit_qty	numerical			Performance	,.0f					sum
+store_sales_usd_price_cut_amt	numerical			Performance	,.0f					avg
+store_sales_usd_amt_ya	numerical			Performance	,.0f					sum
+store_sales_unit_qty_ya	numerical			Performance	,.0f					sum
+store_sales_usd_price_cut_amt_ya	numerical			Performance	,.0f					avg
+store_numer_sales_usd_amt	numerical			Performance	,.0f					sum
+store_numer_sales_unit_qty	numerical			Performance	,.0f					sum
+store_numer_sales_usd_price_cut_amt	numerical			Performance	,.0f					avg
+store_numer_sales_usd_amt_ya	numerical			Performance	,.0f					sum
+store_numer_sales_unit_qty_ya	numerical			Performance	,.0f					sum
+store_numer_sales_usd_price_cut_amt_ya	numerical			Performance	,.0f					avg
+store_prod_cnt	numerical			Performance	,.0f					sum
+store_prod_cnt_ya	numerical			Performance	,.0f					sum
+store_numer_prod_cnt	numerical			Performance	,.0f					sum
+store_numer_prod_cnt_ya	numerical			Performance	,.0f					sum
+store_numer_sales_usd_share_pct	numerical			Performance	,.2f					avg
+store_numer_prod_cnt_share_pct	numerical			Performance	,.2f					avg
+store_numer_avg_unit_price_amt	numerical			Performance	$,.2f					avg
+store_avg_unit_price_amt	numerical			Performance	$,.2f					avg
+store_numer_sales_usd_price_cut_share_pct	numerical			Performance	,.2f					avg
+store_sales_usd_price_cut_share_pct	numerical			Performance	,.2f					avg
+store_numer_sales_usd_share_pct_ya	numerical			Performance	,.2f					avg
+store_numer_prod_cnt_share_pct_ya	numerical			Performance	,.2f					avg
+store_numer_avg_unit_price_amt_ya	numerical			Performance	$,.2f					avg
+store_avg_unit_price_amt_ya	numerical			Performance	$,.2f					avg
+store_numer_sales_usd_price_cut_share_pct_ya	numerical			Performance	,.2f					avg
+store_sales_usd_price_cut_share_pct_ya	numerical			Performance	,.2f					avg
+store_prdctvty_ratio	numerical			Performance	,.2f					avg
+store_ttl_hhd	numerical			Performance	,.0f					sum
+store_sales_by_ttl_hhd	numerical			Performance	,.0f					sum
+target_ind	numerical			Performance	,.0f					avg
+store_sales_by_ttl_hhd_threshold	numerical			Performance	$,.2f					avg
+trade_area_sales_usd_amt	numerical			Performance	$,.0f					sum
+trade_area_sales_unit_qty	numerical			Performance	,.0f					sum
+trade_area_sales_usd_price_cut_amt	numerical			Performance	,.0f					avg
+trade_area_sales_usd_amt_ya	numerical			Performance	,.0f					sum
+trade_area_sales_unit_qty_ya	numerical			Performance	,.0f					sum
+trade_area_sales_usd_price_cut_amt_ya	numerical			Performance	,.0f					avg
+trade_area_numer_sales_usd_amt	numerical			Performance	$,.0f					sum
+trade_area_numer_sales_unit_qty	numerical			Performance	,.0f					sum
+trade_area_numer_sales_usd_price_cut_amt	numerical			Performance	,.0f					avg
+trade_area_numer_sales_usd_amt_ya	numerical			Performance	,.0f					sum
+trade_area_numer_sales_unit_qty_ya	numerical			Performance	,.0f					sum
+trade_area_numer_sales_usd_price_cut_amt_ya	numerical			Performance	,.0f					avg
+trade_area_prod_cnt	numerical			Performance	,.0f					sum
+trade_area_prod_cnt_ya	numerical			Performance	,.0f					sum
+trade_area_numer_prod_cnt	numerical			Performance	,.0f					sum
+trade_area_numer_prod_cnt_ya	numerical			Performance	,.0f					sum
+trade_area_numer_sales_usd_share_pct	numerical			Performance	,.0f					avg
+trade_area_numer_prod_cnt_share_pct	numerical			Performance	,.0f					avg
+trade_area_numer_avg_unit_price_amt	numerical			Performance	,.0f					avg
+trade_area_avg_unit_price_amt	numerical			Performance	$,.2f					avg
+trade_area_numer_sales_usd_price_cut_share_pct	numerical			Performance	,.0f					avg
+trade_area_sales_usd_price_cut_share_pct	numerical			Performance	,.0f					avg
+trade_area_numer_sales_usd_share_pct_ya	numerical			Performance	,.0f					avg
+trade_area_numer_prod_cnt_share_pct_ya	numerical			Performance	,.0f					avg
+trade_area_numer_avg_unit_price_amt_ya	numerical			Performance	,.0f					avg
+trade_area_avg_unit_price_amt_ya	numerical			Performance	$,.2f					avg
+trade_area_numer_sales_usd_price_cut_share_pct_ya	numerical			Performance	,.0f					avg
+trade_area_sales_usd_price_cut_share_pct_ya	numerical			Performance	,.0f					avg
+trade_area_prdctvty_ratio	numerical			Performance	,.0f					avg
+prob_of_1_rf	numerical			Performance	,.0f					avg
+prob_of_1_lr	numerical			Performance	,.0f					avg
+prob_of_1_mean	numerical	Model Score		Performance	,.2f					avg
+predicted_target	numerical			Performance	,.0f					avg
+modeled_vs_actual_quadrant	categorical			Performance						
+star_median	numerical			Performance	,.2f					avg
+target_threshold	numerical			Performance	,.0f					avg
+share_gap	numerical			Performance	,.0f					avg
+size_of_prize	numerical			Performance	,.0f					avg
+city		City		Geo Area						
+county_name		County		Geo Area						
+dma_name				Geo Area						
+owner_name				Retailer						
+state_name	categorical	State		Geo Area						
+ttl_hhd	numerical			Demographics						sum
+Spend_per_HHD	numerical	Spend per Household		Demographics	$,.2f					sum

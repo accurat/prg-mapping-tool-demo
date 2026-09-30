@@ -17,11 +17,19 @@ import {
   type P0DataMode,
   type P0MapView,
 } from "@/components/lab/P0NavMenu";
-import { P0ViewsPanel } from "@/components/lab/P0ViewsPanel";
+import { P0ViewsPanel, type P0StoryView } from "@/components/lab/P0ViewsPanel";
 import { MapSurface, type MapHandle } from "@/components/lab/MapSurface";
 import { Stage } from "@/components/lab/Stage";
 import { AloneGlobo } from "@/components/tour/AloneGlobo";
 import { leggiBordoDaOverlay } from "@/lib/lab/bordoGlobo";
+import {
+  buildDemoPoints,
+  bucketColor,
+  loadDemographics,
+  usaMetricSummary,
+  type DemoIndexPoint,
+  type DemoTable,
+} from "@/lib/lab/demographics";
 import { under } from "@/lib/lab/map";
 import { loadRealNetwork, type NetworkLink, type NetworkNode } from "@/lib/lab/realNetwork";
 import { loadRealStores, type RealStore } from "@/lib/lab/realStores";
@@ -152,6 +160,10 @@ export default function P0Page() {
   const [dataMode, setDataMode] = useState<P0DataMode>("stores");
   const [mapView, setMapView] = useState<P0MapView>("globe");
   const [viewsOpen, setViewsOpen] = useState(false);
+  const [activeStory, setActiveStory] = useState<P0StoryView | null>(null);
+  const [demoTable, setDemoTable] = useState<DemoTable | null>(null);
+  const [demoCategoryId, setDemoCategoryId] = useState("Generation");
+  const [demoColumnId, setDemoColumnId] = useState("age_millenials");
   const [loadError, setLoadError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -165,8 +177,42 @@ export default function P0Page() {
   const { stats } = useFrameMeter();
   const trust = useRenderTrust(stats.medianMs);
 
+  const demoCategory = useMemo(
+    () => demoTable?.categories.find((c) => c.id === demoCategoryId) ?? null,
+    [demoTable, demoCategoryId],
+  );
+
+  const demoColumn = useMemo(
+    () => demoCategory?.columns.find((c) => c.id === demoColumnId) ?? null,
+    [demoCategory, demoColumnId],
+  );
+
+  const demoRecap = useMemo(() => {
+    if (!demoTable || !stores || !demoColumnId) return null;
+    return usaMetricSummary(
+      demoTable.byStore,
+      stores.map((s) => s.storeId),
+      demoColumnId,
+    );
+  }, [demoTable, stores, demoColumnId]);
+
+  const exploringDemo = activeStory === "Explore demographics";
+
   /** Aggregati della selezione corrente (oggi: overview USA intera). */
   const contextStats = useMemo((): ContextStat[] => {
+    if (exploringDemo && demoRecap) {
+      const top = demoRecap.buckets.reduce(
+        (best, b) => (b.share > best.share ? b : best),
+        demoRecap.buckets[0],
+      );
+      return [
+        { label: "Selection", value: "United States" },
+        { label: "Metric", value: demoColumn?.label ?? "—" },
+        { label: "Avg index", value: demoRecap.avg.toFixed(0) },
+        { label: "Top bucket", value: top?.name ?? "—" },
+      ];
+    }
+
     if (dataMode === "network") {
       const links = network?.links ?? [];
       const nodes = network?.nodes ?? [];
@@ -188,10 +234,20 @@ export default function P0Page() {
       { label: "Total sales", value: valuta(sales) },
       { label: "States", value: conta(states.size) },
     ];
-  }, [dataMode, stores, network]);
+  }, [
+    exploringDemo,
+    demoRecap,
+    demoColumn,
+    dataMode,
+    stores,
+    network,
+  ]);
 
-  const viewTitle =
-    dataMode === "network" ? "Supply network" : "Store competitive density";
+  const viewTitle = exploringDemo
+    ? `Demographics · ${demoColumn?.label ?? "…"}`
+    : dataMode === "network"
+      ? "Supply network"
+      : "Store competitive density";
 
   useEffect(() => {
     let cancelled = false;
@@ -338,6 +394,42 @@ export default function P0Page() {
     [labelId, mapView],
   );
 
+  /** Colonne = indice della metrica per store; colore = bucket Lowest→Highest. */
+  const drawDemographics = useCallback(
+    (points: DemoIndexPoint[]) => {
+      const overlay = overlayRef.current;
+      if (!overlay) {
+        return;
+      }
+      const viewKey = mapView === "globe" ? "globe" : "map";
+      // altezza: indice 100 ≈ meta' DATA_HEIGHT; clamp a 200
+      const INDEX_REF = 200;
+      overlay.setProps({
+        layers: [
+          new ColumnLayer<DemoIndexPoint>({
+            id: `demo-${viewKey}-${demoColumnId}`,
+            data: points,
+            diskResolution: 12,
+            radius: COLUMN_RADIUS_M,
+            extruded: true,
+            material: false,
+            getPosition: (d) => d.position,
+            getElevation: (d) =>
+              (Math.min(Math.max(d.index, 0), INDEX_REF) / INDEX_REF) * DATA_HEIGHT_M,
+            getFillColor: (d) => bucketColor(d.bucket),
+            updateTriggers: {
+              getElevation: demoColumnId,
+              getFillColor: demoColumnId,
+            },
+            ...under(labelId),
+          }),
+        ],
+        effects: [LIGHT],
+      });
+    },
+    [labelId, mapView, demoColumnId],
+  );
+
   /** Rete archi/nodi: PathLayer funziona sia su globo sia su mercator. */
   const drawNetwork = useCallback(
     (links: NetworkLink[], nodes: NetworkNode[]) => {
@@ -388,6 +480,12 @@ export default function P0Page() {
 
   const applyDataMode = useCallback(
     async (mode: P0DataMode) => {
+      if (activeStory === "Explore demographics" && stores && demoTable && demoColumnId) {
+        const points = buildDemoPoints(stores, demoTable.byStore, demoColumnId);
+        drawDemographics(points);
+        return;
+      }
+
       if (mode === "stores") {
         if (stores) {
           drawStores(1, stores);
@@ -407,14 +505,106 @@ export default function P0Page() {
       }
       drawNetwork(data.links, data.nodes);
     },
-    [stores, network, drawStores, drawNetwork],
+    [
+      activeStory,
+      stores,
+      demoTable,
+      demoColumnId,
+      drawDemographics,
+      network,
+      drawStores,
+      drawNetwork,
+    ],
   );
 
   const handleDataToggle = useCallback(() => {
+    // uscita dalla story demographics quando si cambia dataset
+    setActiveStory(null);
     const next: P0DataMode = dataMode === "stores" ? "network" : "stores";
     setDataMode(next);
-    void applyDataMode(next);
-  }, [dataMode, applyDataMode]);
+    if (next === "stores") {
+      if (stores) drawStores(1, stores);
+      return;
+    }
+    void (async () => {
+      let data = network;
+      if (!data) {
+        try {
+          data = await loadRealNetwork();
+          setNetwork(data);
+        } catch (err: unknown) {
+          setLoadError(err instanceof Error ? err.message : "errore network");
+          return;
+        }
+      }
+      drawNetwork(data.links, data.nodes);
+    })();
+  }, [dataMode, stores, network, drawStores, drawNetwork]);
+
+  const handleStorySelect = useCallback(
+    async (story: P0StoryView) => {
+      setActiveStory(story);
+      if (story !== "Explore demographics") {
+        if (dataMode === "stores") {
+          if (stores) drawStores(1, stores);
+        } else if (network) {
+          drawNetwork(network.links, network.nodes);
+        } else {
+          void applyDataMode("network");
+        }
+        return;
+      }
+
+      setDataMode("stores");
+      let table = demoTable;
+      if (!table) {
+        try {
+          table = await loadDemographics();
+          setDemoTable(table);
+        } catch (err: unknown) {
+          setLoadError(err instanceof Error ? err.message : "errore demographics");
+          return;
+        }
+      }
+
+      const cat =
+        table.categories.find((c) => c.id === demoCategoryId) ?? table.categories[0];
+      if (!cat) return;
+      setDemoCategoryId(cat.id);
+      const col =
+        cat.columns.find((c) => c.id === demoColumnId) ?? cat.columns[0];
+      if (col) setDemoColumnId(col.id);
+
+      if (!stores) return;
+      const colId = col?.id ?? cat.columns[0].id;
+      const points = buildDemoPoints(stores, table.byStore, colId);
+      drawDemographics(points);
+    },
+    [
+      dataMode,
+      demoTable,
+      demoCategoryId,
+      demoColumnId,
+      stores,
+      network,
+      drawDemographics,
+      drawStores,
+      drawNetwork,
+      applyDataMode,
+    ],
+  );
+
+  const handleDemoCategoryChange = useCallback(
+    (categoryId: string) => {
+      setDemoCategoryId(categoryId);
+      const cat = demoTable?.categories.find((c) => c.id === categoryId);
+      const first = cat?.columns[0];
+      if (first) {
+        setDemoColumnId(first.id);
+      }
+    },
+    [demoTable],
+  );
 
   /** Globo inclinato ↔ mappa classica dall'alto (stesso centro/zoom). */
   const handleMapViewToggle = useCallback(() => {
@@ -463,7 +653,7 @@ export default function P0Page() {
     }
   }, [map, mapView]);
 
-  // dopo il cambio proiezione, ridefinisce i layer con id nuovo (sync deck ↔ maplibre)
+  // dopo il cambio proiezione / metrica demo, ridefinisce i layer
   useEffect(() => {
     if (phase !== "navigabile") {
       return;
@@ -472,7 +662,14 @@ export default function P0Page() {
       void applyDataMode(dataMode);
     }, 80);
     return () => window.clearTimeout(timer);
-  }, [mapView, phase, dataMode, applyDataMode]);
+  }, [mapView, phase, dataMode, applyDataMode, demoColumnId, demoCategoryId, activeStory]);
+
+  useEffect(() => {
+    if (phase === "orbita") {
+      setActiveStory(null);
+      setViewsOpen(false);
+    }
+  }, [phase]);
 
   const animate = useCallback((ms: number, onFrame: (eased: number) => void) => {
     return new Promise<void>((resolve) => {
@@ -679,7 +876,18 @@ export default function P0Page() {
               transition: "opacity 450ms cubic-bezier(0.4, 0, 0.2, 1)",
             }}
           >
-            <P0ViewsPanel visible={viewsOpen && phase === "navigabile"} />
+            <P0ViewsPanel
+              visible={viewsOpen && phase === "navigabile"}
+              activeStory={activeStory}
+              onStorySelect={(story) => void handleStorySelect(story)}
+              categories={demoTable?.categories}
+              categoryId={demoCategoryId}
+              columnId={demoColumnId}
+              onCategoryChange={handleDemoCategoryChange}
+              onColumnChange={setDemoColumnId}
+              metricSummary={demoRecap}
+              metricLabel={demoColumn?.label}
+            />
           </div>
         </div>
       </Stage>
